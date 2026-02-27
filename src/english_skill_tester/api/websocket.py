@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+import random
+import time
 import uuid
 from datetime import datetime
 
@@ -24,6 +26,66 @@ from english_skill_tester.models.session import Session, SessionStatus
 from english_skill_tester.realtime.client import RealtimeClient
 
 logger = structlog.get_logger()
+
+
+class GestureController:
+    """Rule-based gesture triggering based on conversation events."""
+
+    def __init__(self, send_fn):
+        self._send = send_fn  # _send_to_browser
+        self._last_gesture_time = 0
+        self._min_interval = 3.0  # 最小ジェスチャー間隔（秒）
+
+    async def on_session_start(self):
+        await self._trigger("wave")
+
+    async def on_user_finished_speaking(self):
+        await self._trigger("nod")
+
+    async def on_ai_response_long(self):
+        """AI応答が2文以上の時"""
+        gesture = random.choice(["explain", "open_palms", "point"])
+        await self._trigger(gesture)
+
+    async def on_high_score(self):
+        gesture = random.choice(["thumbs_up", "celebration"])
+        await self._trigger(gesture)
+
+    async def on_silence(self):
+        """5秒以上沈黙"""
+        await self._trigger("listen")
+
+    async def on_question_asked(self):
+        await self._trigger("thinking_pose")
+
+    def analyze_context(self, text: str) -> str | None:
+        """Analyze AI transcript and return appropriate gesture."""
+        text_lower = text.lower()
+
+        if any(word in text_lower for word in ["think", "well...", "let me"]):
+            return "thinking_pose"
+        if any(word in text_lower for word in ["great!", "excellent!", "good job"]):
+            return random.choice(["thumbs_up", "celebration"])
+        if any(word in text_lower for word in ["don't know", "not sure"]):
+            return "shrug"
+        if "?" in text:
+            return "lean_forward"
+        if len(text.split()) > 50:
+            return random.choice(["explain", "open_palms"])
+        if any(word in text_lower for word in ["hello", "hi", "goodbye"]):
+            return "wave"
+        return None
+
+    async def _trigger(self, gesture):
+        now = time.time()
+        if now - self._last_gesture_time < self._min_interval:
+            return
+        self._last_gesture_time = now
+        await self._send({
+            "type": "character_action",
+            "action_type": "gesture",
+            "value": gesture,
+        })
 
 
 class SessionManager:
@@ -71,6 +133,7 @@ class SessionManager:
         )
         self._tasks: list[asyncio.Task] = []
         self._ai_speaking = False
+        self.gesture_ctrl = GestureController(self._send_to_browser)
 
     async def start(self) -> None:
         """Start the conversation session."""
@@ -92,6 +155,8 @@ class SessionManager:
             asyncio.create_task(self.realtime.receive_loop()),
             asyncio.create_task(self._score_update_loop()),
         ]
+
+        await self.gesture_ctrl.on_session_start()
 
         await self._send_to_browser({
             "type": "session_state",
@@ -176,6 +241,7 @@ class SessionManager:
                     "text": transcript,
                 })
                 logger.info("user_said", text=transcript[:80])
+                await self.gesture_ctrl.on_user_finished_speaking()
 
         async def on_ai_transcript(event: dict) -> None:
             transcript = event.get("transcript", "")
@@ -186,6 +252,10 @@ class SessionManager:
                     "role": "assistant",
                     "text": transcript,
                 })
+                # Trigger context-based gesture
+                gesture = self.gesture_ctrl.analyze_context(transcript)
+                if gesture:
+                    await self.gesture_ctrl._trigger(gesture)
 
         async def on_function_call(event: dict) -> None:
             name = event.get("name", "")

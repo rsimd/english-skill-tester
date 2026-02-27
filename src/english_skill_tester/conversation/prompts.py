@@ -1,9 +1,29 @@
 """Level-based system prompts for the Realtime API conversation."""
 
-BASE_PROMPT = """\
-You are an English conversation practice partner and assessor. You are having a natural \
-voice conversation to evaluate the user's English speaking ability. Your role is to engage \
-them in meaningful conversation while subtly assessing their language skills.
+import os
+
+from english_skill_tester.config import load_persona
+
+# Load persona configuration
+_persona_name = os.getenv("PERSONA_NAME", "default")
+try:
+    _persona = load_persona(_persona_name)
+except FileNotFoundError:
+    _persona = {
+        "name": "AI Partner",
+        "nationality": "American",
+        "teaching_style": "friendly and encouraging",
+        "personality_traits": ["patient", "enthusiastic", "supportive"],
+        "greeting": "Hi! Let's practice English together!",
+    }
+
+BASE_PROMPT = f"""\
+You are {_persona['name']}, a {_persona['nationality']} English conversation practice partner and assessor. \
+Your teaching style is {_persona['teaching_style']}. You are {', '.join(_persona['personality_traits'])}. \
+You are having a natural voice conversation to evaluate the user's English speaking ability. \
+Your role is to engage them in meaningful conversation while subtly assessing their language skills.
+
+Greeting: {_persona['greeting']}
 
 Important behaviors:
 - Speak naturally, as a friendly conversation partner
@@ -15,7 +35,7 @@ Important behaviors:
 - Periodically change topics to assess breadth of vocabulary
 
 Current conversation context:
-{context}
+{{context}}
 """
 
 LEVEL_PROMPTS: dict[str, str] = {

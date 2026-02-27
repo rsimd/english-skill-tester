@@ -87,6 +87,40 @@
         }
     });
 
+    // ---- Model switching ----
+
+    const btnModel = document.getElementById('btn-change-model');
+    const vrmInput = document.getElementById('vrm-upload');
+
+    if (btnModel && vrmInput) {
+        btnModel.addEventListener('click', () => vrmInput.click());
+        vrmInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!file.name.toLowerCase().endsWith('.vrm')) {
+                alert('VRMファイルを選択してください');
+                return;
+            }
+            if (file.size > 50 * 1024 * 1024) { // 50MB上限
+                alert('ファイルサイズが大きすぎます（50MB以下）');
+                return;
+            }
+            const url = URL.createObjectURL(file);
+            try {
+                await window.CharacterController.loadModel(url);
+                document.getElementById('model-name').textContent = file.name;
+            } catch (err) {
+                console.error('Model load failed:', err);
+                alert('VRMの読み込みに失敗しました: ' + err.message);
+                // Reload default model
+                await window.CharacterController.loadModel('/models/avatar.vrm');
+            } finally {
+                URL.revokeObjectURL(url);
+                vrmInput.value = ''; // Reset for same file re-upload
+            }
+        });
+    }
+
     // ---- Initialize ----
 
     function init() {

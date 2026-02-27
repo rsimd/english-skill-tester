@@ -35,7 +35,11 @@ REALTIME_TOOLS: list[dict] = [
             "properties": {
                 "gesture": {
                     "type": "string",
-                    "enum": ["nod", "wave", "thumbs_up", "explain", "listen"],
+                    "enum": [
+                        "nod", "wave", "thumbs_up", "explain", "listen",
+                        "shrug", "thinking_pose", "open_palms", "head_shake",
+                        "lean_forward", "celebration", "point", "idle_rest"
+                    ],
                     "description": "The gesture animation to play.",
                 },
             },

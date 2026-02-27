@@ -2,9 +2,11 @@
 
 import functools
 from pathlib import Path
+from typing import Any
 
+import yaml
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
 def _find_project_root() -> Path:
@@ -15,6 +17,43 @@ def _find_project_root() -> Path:
             return parent
     # Fallback to old behavior if pyproject.toml not found
     return Path(__file__).resolve().parent.parent.parent
+
+
+class YamlSettingsSource(PydanticBaseSettingsSource):
+    """Custom settings source that loads from settings.yaml."""
+
+    def get_field_value(self, field_name: str) -> tuple[Any, str, bool]:
+        """Not used - we implement __call__ instead."""
+        return None, "", False
+
+    def __call__(self) -> dict[str, Any]:
+        """Load settings from YAML file."""
+        yaml_path = _find_project_root() / "config" / "settings.yaml"
+        if not yaml_path.exists():
+            return {}
+
+        with open(yaml_path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+
+        # Flatten nested structure to match Settings field names
+        flattened = {}
+        if 'server' in data:
+            flattened['host'] = data['server'].get('host')
+            flattened['port'] = data['server'].get('port')
+        if 'audio' in data:
+            flattened['audio_sample_rate'] = data['audio'].get('sample_rate')
+            flattened['audio_channels'] = data['audio'].get('channels')
+            flattened['audio_chunk_duration_ms'] = data['audio'].get('chunk_duration_ms')
+        if 'assessment' in data:
+            flattened['llm_eval_interval_utterances'] = data['assessment'].get('llm_eval_interval_utterances')
+            flattened['llm_eval_interval_seconds'] = data['assessment'].get('llm_eval_interval_seconds')
+            flattened['score_update_interval_seconds'] = data['assessment'].get('score_update_interval_seconds')
+        if 'openai' in data:
+            flattened['realtime_model'] = data['openai'].get('realtime_model')
+            flattened['evaluation_model'] = data['openai'].get('evaluation_model')
+
+        # Remove None values
+        return {k: v for k, v in flattened.items() if v is not None}
 
 
 class Settings(BaseSettings):
@@ -75,8 +114,54 @@ class Settings(BaseSettings):
         """Number of samples per audio chunk."""
         return int(self.audio_sample_rate * self.audio_chunk_duration_ms / 1000)
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Customise settings sources to include YAML file.
+
+        Priority order (highest to lowest):
+        1. init_settings (arguments passed to Settings())
+        2. env_settings (environment variables)
+        3. dotenv_settings (.env file)
+        4. YamlSettingsSource (settings.yaml)
+        5. file_secret_settings
+        """
+        return (
+            init_settings,
+            env_settings,
+            dotenv_settings,
+            YamlSettingsSource(settings_cls),
+            file_secret_settings,
+        )
+
 
 @functools.lru_cache()
 def get_settings() -> Settings:
     """Get application settings singleton."""
     return Settings()
+
+
+def load_persona(persona_name: str = "default") -> dict:
+    """Load persona configuration from YAML file."""
+    persona_path = Path(__file__).parent.parent.parent / "config" / "personas" / f"{persona_name}.yaml"
+    if not persona_path.exists():
+        raise FileNotFoundError(f"Persona file not found: {persona_path}")
+    with open(persona_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+    return data.get('persona', {})
+
+
+def load_level_prompts() -> dict:
+    """Load level-specific prompts from YAML file."""
+    prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts" / "levels.yaml"
+    if not prompts_path.exists():
+        raise FileNotFoundError(f"Prompts file not found: {prompts_path}")
+    with open(prompts_path, 'r', encoding='utf-8') as f:
+        data = yaml.safe_load(f)
+    return data.get('levels', {})

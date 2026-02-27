@@ -136,6 +136,7 @@ async function loadVRM() {
                     vrm.scene.rotation.y = Math.PI;
                     disableExpressionOverrides();
                     console.log('VRM model loaded successfully');
+                    logDiagnostics();
                 }
                 resolve(vrm);
             },
@@ -165,6 +166,92 @@ function disableExpressionOverrides() {
         }
     });
     console.log('Expression overrides disabled for lip sync compatibility');
+}
+
+function logDiagnostics() {
+    if (!vrm) return;
+
+    console.log('=== VRM Model Diagnostics ===');
+
+    // Bone availability
+    if (vrm.humanoid) {
+        const boneNames = ['head', 'rightUpperArm', 'rightLowerArm',
+                           'leftUpperArm', 'leftLowerArm', 'spine'];
+        console.log('Bones:');
+        boneNames.forEach(name => {
+            const bone = vrm.humanoid.getNormalizedBoneNode(name);
+            console.log(`  ${name}:`, bone ? '✓ found' : '✗ MISSING');
+        });
+    }
+
+    // Expression availability
+    if (vrm.expressionManager) {
+        const expressions = vrm.expressionManager.expressions || [];
+        console.log('Expressions:');
+        expressions.forEach(expr => {
+            console.log(`  ${expr.expressionName}:`, {
+                overrideMouth: expr.overrideMouth,
+                overrideBlink: expr.overrideBlink,
+            });
+        });
+    }
+
+    console.log('=========================');
+}
+
+async function loadModel(source) {
+    // source: '/models/avatar.vrm' or blob URL
+    const wasAnimating = initialized;
+    initialized = false; // Pause animation loop
+
+    // Unload current
+    if (vrm) {
+        activeGesture = null;
+        gestureProgress = 0;
+        gestureOriginalRotations = {};
+        currentAudioLevel = 0;
+        targetAudioLevel = 0;
+
+        scene.remove(vrm.scene);
+        vrm.scene.traverse((obj) => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                mats.forEach(mat => {
+                    if (mat.map) mat.map.dispose();
+                    mat.dispose();
+                });
+            }
+        });
+        vrm = null;
+    }
+
+    // Load new
+    const loader = new GLTFLoader();
+    const { VRMLoaderPlugin } = await import('@pixiv/three-vrm');
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+
+    return new Promise((resolve, reject) => {
+        loader.load(source,
+            (gltf) => {
+                vrm = gltf.userData.vrm;
+                if (vrm) {
+                    scene.add(vrm.scene);
+                    vrm.scene.rotation.y = Math.PI;
+                    disableExpressionOverrides(); // Phase 1 の修正を新モデルにも適用
+                    initialized = true;
+                    if (!wasAnimating) animate(); // 初回のみ animate 開始
+                    console.log('VRM model switched successfully');
+                    logDiagnostics();
+                    resolve(vrm);
+                } else {
+                    reject(new Error('VRM data not found in file'));
+                }
+            },
+            null,
+            (error) => reject(error)
+        );
+    });
 }
 
 function animate() {
@@ -330,6 +417,19 @@ function restoreBoneRotations() {
     });
 }
 
+// Set idle pose (reset all gesture bones to rest position)
+function setIdlePose() {
+    if (!vrm || !vrm.humanoid) return;
+    // Reset all gesture bones to rest position
+    const bones = ['rightUpperArm', 'rightLowerArm', 'leftUpperArm', 'leftLowerArm', 'spine'];
+    bones.forEach(name => {
+        const bone = vrm.humanoid.getNormalizedBoneNode(name);
+        if (bone) {
+            bone.rotation.set(0, 0, 0);
+        }
+    });
+}
+
 function updateGesture(delta) {
     if (!activeGesture || !vrm || !vrm.humanoid) return;
 
@@ -355,7 +455,7 @@ function updateGesture(delta) {
             const nodAngle = Math.sin(t * Math.PI * 3) * 0.2;
             head.rotation.x = nodAngle;
         } else {
-            restoreBoneRotations();
+            setIdlePose();
             activeGesture = null;
         }
 
@@ -375,7 +475,7 @@ function updateGesture(delta) {
                 rightLowerArm.rotation.z = gestureOriginalRotations.rightLowerArm.z + (oscillation * 0.1);
             }
         } else {
-            restoreBoneRotations();
+            setIdlePose();
             activeGesture = null;
         }
 
@@ -397,7 +497,7 @@ function updateGesture(delta) {
                 head.rotation.x = -0.1 * blend; // slight look up
             }
         } else {
-            restoreBoneRotations();
+            setIdlePose();
             activeGesture = null;
         }
 
@@ -419,7 +519,7 @@ function updateGesture(delta) {
                 leftUpperArm.rotation.z = gestureOriginalRotations.leftUpperArm.z + (Math.PI / 6 - vibration); // +30° - vibration
             }
         } else {
-            restoreBoneRotations();
+            setIdlePose();
             activeGesture = null;
         }
 
@@ -437,12 +537,161 @@ function updateGesture(delta) {
                 spine.rotation.z = gestureOriginalRotations.spine.z + (t * 0.08); // slight body lean
             }
         } else {
-            restoreBoneRotations();
+            setIdlePose();
             activeGesture = null;
         }
 
+    } else if (activeGesture === 'shrug') {
+        // Shrug shoulders - both shoulders up
+        if (!rightUpperArm && !leftUpperArm) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.0;
+        if (gestureProgress < duration) {
+            const t = easeInOutCubic(Math.min(1, gestureProgress / (duration * 0.4))); // ease in
+            const easeOut = easeInOutCubic(Math.max(0, (gestureProgress - duration * 0.6) / (duration * 0.4))); // ease out
+            const blend = t * (1 - easeOut);
+
+            if (rightUpperArm) {
+                rightUpperArm.rotation.z = gestureOriginalRotations.rightUpperArm.z + (Math.PI / 8 * blend); // +22.5°
+            }
+            if (leftUpperArm) {
+                leftUpperArm.rotation.z = gestureOriginalRotations.leftUpperArm.z + (-Math.PI / 8 * blend); // -22.5°
+            }
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'thinking_pose') {
+        // Right hand to chin
+        if (!rightUpperArm || !rightLowerArm) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.2;
+        if (gestureProgress < duration) {
+            const t = easeInOutCubic(Math.min(1, gestureProgress / (duration * 0.3))); // ease in
+            rightUpperArm.rotation.x = gestureOriginalRotations.rightUpperArm.x + (Math.PI / 6 * t); // +30° (forward)
+            rightUpperArm.rotation.z = gestureOriginalRotations.rightUpperArm.z + (-Math.PI / 6 * t); // -30° (toward body)
+            rightLowerArm.rotation.x = gestureOriginalRotations.rightLowerArm.x + (Math.PI / 2 * t); // +90° (bend elbow)
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'open_palms') {
+        // Both arms forward with palms up
+        if (!rightUpperArm && !leftUpperArm) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.0;
+        if (gestureProgress < duration) {
+            const t = easeInOutCubic(Math.min(1, gestureProgress / (duration * 0.3))); // ease in
+            const easeOut = easeInOutCubic(Math.max(0, (gestureProgress - duration * 0.7) / (duration * 0.3))); // ease out
+            const blend = t * (1 - easeOut);
+
+            if (rightUpperArm) {
+                rightUpperArm.rotation.x = gestureOriginalRotations.rightUpperArm.x + (Math.PI / 4 * blend); // +45° (forward)
+                rightUpperArm.rotation.z = gestureOriginalRotations.rightUpperArm.z + (-Math.PI / 12 * blend); // -15° (slightly outward)
+            }
+            if (leftUpperArm) {
+                leftUpperArm.rotation.x = gestureOriginalRotations.leftUpperArm.x + (Math.PI / 4 * blend); // +45° (forward)
+                leftUpperArm.rotation.z = gestureOriginalRotations.leftUpperArm.z + (Math.PI / 12 * blend); // +15° (slightly outward)
+            }
+            if (rightLowerArm) {
+                rightLowerArm.rotation.y = gestureOriginalRotations.rightLowerArm.y + (Math.PI / 6 * blend); // palm up rotation
+            }
+            if (leftLowerArm) {
+                leftLowerArm.rotation.y = gestureOriginalRotations.leftLowerArm.y + (-Math.PI / 6 * blend); // palm up rotation
+            }
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'head_shake') {
+        // Head shake - left/right oscillation
+        if (!head) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.0;
+        if (gestureProgress < duration) {
+            const t = gestureProgress / duration;
+            const shakeAngle = Math.sin(t * Math.PI * 4) * 0.2; // 4 shakes
+            head.rotation.y = shakeAngle;
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'lean_forward') {
+        // Lean forward - spine forward tilt
+        if (!spine) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 0.8;
+        if (gestureProgress < duration) {
+            const t = easeInOutCubic(gestureProgress / duration);
+            spine.rotation.x = gestureOriginalRotations.spine.x + (t * 0.15); // +~8.6° forward
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'celebration') {
+        // Both arms raised with small vibration
+        if (!rightUpperArm && !leftUpperArm) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.5;
+        if (gestureProgress < duration) {
+            const t = gestureProgress / duration;
+            const vibration = Math.sin(t * Math.PI * 12) * 0.05; // small vibration
+
+            if (rightUpperArm) {
+                rightUpperArm.rotation.z = gestureOriginalRotations.rightUpperArm.z + (-Math.PI / 2 + vibration); // -90° + vibration
+            }
+            if (leftUpperArm) {
+                leftUpperArm.rotation.z = gestureOriginalRotations.leftUpperArm.z + (Math.PI / 2 - vibration); // +90° - vibration
+            }
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'point') {
+        // Point forward - right arm extended
+        if (!rightUpperArm || !rightLowerArm) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 1.0;
+        if (gestureProgress < duration) {
+            const t = easeInOutCubic(Math.min(1, gestureProgress / (duration * 0.3))); // ease in
+            const easeOut = easeInOutCubic(Math.max(0, (gestureProgress - duration * 0.7) / (duration * 0.3))); // ease out
+            const blend = t * (1 - easeOut);
+
+            rightUpperArm.rotation.x = gestureOriginalRotations.rightUpperArm.x + (Math.PI / 4 * blend); // +45° (forward)
+            rightUpperArm.rotation.z = gestureOriginalRotations.rightUpperArm.z + (-Math.PI / 6 * blend); // -30° (toward front)
+            rightLowerArm.rotation.x = gestureOriginalRotations.rightLowerArm.x + (-Math.PI / 12 * blend); // -15° (straighten arm)
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'idle_rest') {
+        // Immediate transition to idle pose
+        setIdlePose();
+        activeGesture = null;
+
     } else {
-        restoreBoneRotations();
+        setIdlePose();
         activeGesture = null;
     }
 }
@@ -528,4 +777,5 @@ window.CharacterController = {
     playGesture,
     setAudioLevel,
     setAiSpeaking,
+    loadModel,
 };
