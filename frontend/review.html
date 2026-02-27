@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Review - English Skill Tester</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="review-app">
+        <header>
+            <h1>Session Review</h1>
+            <a href="/" class="btn btn-secondary">Back to Home</a>
+        </header>
+
+        <main>
+            <!-- Session selector -->
+            <div id="session-selector">
+                <h2>Past Sessions</h2>
+                <div id="session-list" class="session-list">
+                    <p class="loading">Loading sessions...</p>
+                </div>
+            </div>
+
+            <!-- Session detail -->
+            <div id="session-detail" class="hidden">
+                <div class="review-header">
+                    <h2>Session: <span id="review-session-id"></span></h2>
+                    <div class="review-meta">
+                        <span>Date: <strong id="review-date"></strong></span>
+                        <span>Level: <strong id="review-level"></strong></span>
+                        <span>Utterances: <strong id="review-utterance-count"></strong></span>
+                    </div>
+                </div>
+
+                <!-- Transcript with highlights -->
+                <div class="review-section">
+                    <h3>Transcript</h3>
+                    <div id="review-transcript" class="transcript-area"></div>
+                </div>
+
+                <!-- Recordings -->
+                <div class="review-section" id="review-recordings-section">
+                    <h3>Recording</h3>
+                    <audio id="review-audio" controls></audio>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Review page logic
+        async function loadSessions() {
+            const res = await fetch('/api/sessions');
+            const sessions = await res.json();
+            const list = document.getElementById('session-list');
+
+            if (sessions.length === 0) {
+                list.innerHTML = '<p>No sessions found. Complete a conversation first.</p>';
+                return;
+            }
+
+            list.innerHTML = sessions.map(s => `
+                <div class="session-card" onclick="loadSession('${s.session_id}')">
+                    <div class="session-card-header">
+                        <span class="session-date">${new Date(s.started_at).toLocaleString()}</span>
+                        <span class="session-level badge">${s.current_level}</span>
+                    </div>
+                    <div class="session-card-body">
+                        <span>${s.utterance_count} utterances</span>
+                        <span class="session-status">${s.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadSession(sessionId) {
+            const res = await fetch(`/api/sessions/${sessionId}`);
+            const session = await res.json();
+
+            document.getElementById('session-detail').classList.remove('hidden');
+            document.getElementById('review-session-id').textContent = sessionId.substring(0, 8);
+            document.getElementById('review-date').textContent = new Date(session.started_at).toLocaleString();
+            document.getElementById('review-level').textContent = session.current_level;
+            document.getElementById('review-utterance-count').textContent = session.utterances.length;
+
+            // Render transcript
+            const transcriptEl = document.getElementById('review-transcript');
+            transcriptEl.innerHTML = session.utterances.map(u => `
+                <div class="transcript-entry ${u.role}">
+                    <span class="speaker">${u.role === 'user' ? 'You' : 'AI'}:</span>
+                    <span class="text">${escapeHtml(u.text)}</span>
+                </div>
+            `).join('');
+
+            // Audio playback
+            if (session.recording_path) {
+                document.getElementById('review-recordings-section').classList.remove('hidden');
+            } else {
+                document.getElementById('review-recordings-section').classList.add('hidden');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        loadSessions();
+    </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Skill Tester</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header id="header">
+            <h1>English Skill Tester</h1>
+            <div id="connection-status" class="status-indicator disconnected">
+                <span class="dot"></span>
+                <span class="label">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main>
+            <!-- 3D Character area -->
+            <div id="character-container">
+                <canvas id="character-canvas"></canvas>
+                <div id="character-fallback" class="character-fallback">
+                    <div class="avatar" id="avatar-face">🤖</div>
+                    <div class="expression-label" id="expression-label">neutral</div>
+                </div>
+            </div>
+
+            <!-- Score panel -->
+            <div id="score-panel">
+                <div class="score-header">
+                    <div class="overall-score">
+                        <span class="score-value" id="overall-score">--</span>
+                        <span class="score-label">/ 100</span>
+                    </div>
+                    <div class="level-badge" id="level-badge">--</div>
+                </div>
+                <div class="score-estimates">
+                    <span class="estimate">TOEIC: <strong id="toeic-estimate">--</strong></span>
+                    <span class="estimate">IELTS: <strong id="ielts-estimate">--</strong></span>
+                </div>
+                <div class="score-bars">
+                    <div class="score-bar-item">
+                        <label>Vocabulary</label>
+                        <div class="bar-container">
+                            <div class="bar" id="bar-vocabulary" style="width: 50%"></div>
+                        </div>
+                        <span class="bar-value" id="val-vocabulary">50</span>
+                    </div>
+                    <div class="score-bar-item">
+                        <label>Grammar</label>
+                        <div class="bar-container">
+                            <div class="bar" id="bar-grammar" style="width: 50%"></div>
+                        </div>
+                        <span class="bar-value" id="val-grammar">50</span>
+                    </div>
+                    <div class="score-bar-item">
+                        <label>Fluency</label>
+                        <div class="bar-container">
+                            <div class="bar" id="bar-fluency" style="width: 50%"></div>
+                        </div>
+                        <span class="bar-value" id="val-fluency">50</span>
+                    </div>
+                    <div class="score-bar-item">
+                        <label>Comprehension</label>
+                        <div class="bar-container">
+                            <div class="bar" id="bar-comprehension" style="width: 50%"></div>
+                        </div>
+                        <span class="bar-value" id="val-comprehension">50</span>
+                    </div>
+                    <div class="score-bar-item">
+                        <label>Coherence</label>
+                        <div class="bar-container">
+                            <div class="bar" id="bar-coherence" style="width: 50%"></div>
+                        </div>
+                        <span class="bar-value" id="val-coherence">50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transcript -->
+            <div id="transcript-panel">
+                <h2>Conversation</h2>
+                <div id="transcript" class="transcript-area"></div>
+            </div>
+        </main>
+
+        <!-- Controls -->
+        <footer id="controls">
+            <button id="btn-start" class="btn btn-primary">Start Conversation</button>
+            <button id="btn-stop" class="btn btn-danger" disabled>Stop</button>
+            <span id="timer" class="timer">00:00</span>
+        </footer>
+
+        <!-- Feedback overlay -->
+        <div id="feedback-overlay" class="overlay hidden">
+            <div class="overlay-content">
+                <h2>セッション完了</h2>
+                <div id="feedback-content"></div>
+                <button id="btn-close-feedback" class="btn btn-primary">閉じる</button>
+                <a id="btn-review" class="btn btn-secondary" href="/review.html" style="display:none">
+                    詳細レビュー
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- three.js and VRM loader (CDN) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+            "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.3.3/lib/three-vrm.module.min.js"
+        }
+    }
+    </script>
+
+    <script src="/js/websocket.js"></script>
+    <script src="/js/ui.js"></script>
+    <script type="module" src="/js/character.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

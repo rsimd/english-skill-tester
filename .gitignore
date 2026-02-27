@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/recordings/
+data/sessions/
+frontend/models/*.vrm
+*.egg-info/
+dist/
+build/
+.ruff_cache/
+.pytest_cache/
