@@ -152,9 +152,12 @@ class SessionManager:
             await self._send_to_browser({"type": "ai_speaking", "speaking": True})
 
         async def on_response_done(event: dict) -> None:
-            self._ai_speaking = False
-            await self._send_to_browser({"type": "ai_speaking", "speaking": False})
-            await self._send_to_browser({"type": "audio_level", "level": 0})
+            # Wait for playback buffer to drain before stopping lip sync
+            await asyncio.sleep(0.3)
+            if self._ai_speaking:  # Check if new response has started
+                self._ai_speaking = False
+                await self._send_to_browser({"type": "ai_speaking", "speaking": False})
+                await self._send_to_browser({"type": "audio_level", "level": 0})
 
         async def on_speech_started(event: dict) -> None:
             """User started speaking — clear AI audio buffer."""

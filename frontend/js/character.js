@@ -134,6 +134,7 @@ async function loadVRM() {
                 if (vrm) {
                     scene.add(vrm.scene);
                     vrm.scene.rotation.y = Math.PI;
+                    disableExpressionOverrides();
                     console.log('VRM model loaded successfully');
                 }
                 resolve(vrm);
@@ -150,6 +151,20 @@ async function loadVRM() {
             }
         );
     });
+}
+
+function disableExpressionOverrides() {
+    if (!vrm || !vrm.expressionManager) return;
+    const expressions = vrm.expressionManager.expressions || [];
+    expressions.forEach(expr => {
+        if (expr.overrideMouth !== undefined) {
+            expr.overrideMouth = 'none';
+        }
+        if (expr.overrideBlink !== undefined) {
+            expr.overrideBlink = 'none';
+        }
+    });
+    console.log('Expression overrides disabled for lip sync compatibility');
 }
 
 function animate() {
@@ -466,7 +481,9 @@ function setExpression(expression) {
 
     const preset = presetMap[expression];
     if (preset) {
-        vrm.expressionManager.setValue(preset, 0.7);
+        // Reduce weight during speech to prevent mouth override
+        const weight = aiSpeaking ? 0.35 : 0.7;
+        vrm.expressionManager.setValue(preset, weight);
     }
 
     console.log('Expression set:', expression);
