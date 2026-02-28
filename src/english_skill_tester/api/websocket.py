@@ -32,20 +32,23 @@ from english_skill_tester.storage.score_history import append_session_score
 logger = structlog.get_logger()
 
 
-def _execute_web_search(query: str, max_results: int = 3) -> str:
+async def _execute_web_search(query: str, max_results: int = 3) -> str:
     """Execute a web search and return formatted results."""
-    try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
-        if not results:
-            return "No results found."
-        lines = []
-        for r in results:
-            lines.append(f"- {r.get('title', '')}: {r.get('body', '')}")
-        return "\n".join(lines)
-    except Exception as e:
-        logger.warning("web_search_failed", error=str(e))
-        return f"Search failed: {e}"
+    def _sync_search():
+        try:
+            with DDGS() as ddgs:
+                results = list(ddgs.text(query, max_results=max_results))
+            if not results:
+                return "No results found."
+            lines = []
+            for r in results:
+                lines.append(f"- {r.get('title', '')}: {r.get('body', '')}")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.warning("web_search_failed", error=str(e))
+            return f"Search failed: {e}"
+
+    return await asyncio.to_thread(_sync_search)
 
 
 _EMOTION_PATTERNS = {
@@ -140,7 +143,12 @@ class SessionManager:
         browser_ws: WebSocket connection to the browser.
     """
 
-    def __init__(self, settings: Settings, browser_ws: WebSocket):
+    def __init__(
+        self,
+        settings: Settings,
+        browser_ws: WebSocket,
+        device_id: int | str | None = None,
+    ):
         self.settings = settings
         self.browser_ws = browser_ws
         self.session = Session(session_id=str(uuid.uuid4()))
@@ -160,7 +168,7 @@ class SessionManager:
             sample_rate=settings.audio_sample_rate,
             channels=settings.audio_channels,
             chunk_size=settings.audio_chunk_size,
-            device=settings.audio_input_device,
+            device=device_id if device_id is not None else settings.audio_input_device,
         )
         self.playback = AudioPlayback(
             sample_rate=settings.audio_sample_rate,
@@ -194,7 +202,16 @@ class SessionManager:
         initial_prompt = self.strategy.current_prompt
         await self.realtime.connect(initial_prompt)
 
-        self.capture.start()
+        try:
+            self.capture.start()
+        except Exception as e:
+            logger.warning("mic_init_failed", error=str(e))
+            await self._send_to_browser({
+                "type": "error",
+                "code": "mic_permission_error",
+                "message": "マイクへのアクセスに失敗しました。設定を確認してください。",
+            })
+            return
         self.playback.start()
         self.recorder.start()
 
@@ -565,7 +582,8 @@ async def handle_browser_websocket(
             if msg_type == "start_session":
                 if session_mgr:
                     await session_mgr.stop()
-                session_mgr = SessionManager(settings, websocket)
+                device_id = data.get("device_id")
+                session_mgr = SessionManager(settings, websocket, device_id=device_id)
                 await session_mgr.start()
 
             elif msg_type == "stop_session":
@@ -581,6 +599,7 @@ async def handle_browser_websocket(
                         "reason": "force_stop",
                     })
                     asyncio.create_task(session_mgr._delayed_stop(delay=0.5))
+                    session_mgr = None
 
     except WebSocketDisconnect:
         logger.info("browser_disconnected")
