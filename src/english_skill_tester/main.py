@@ -68,8 +68,7 @@ async def auth_middleware(request: Request, call_next):
         return await call_next(request)
     secret = request.headers.get("X-App-Secret", "")
     if request.url.path == "/ws":
-        qs_secret = request.query_params.get("secret", "")
-        if secret != settings.app_secret and qs_secret != settings.app_secret:
+        if secret != settings.app_secret:
             return JSONResponse({"error": "Unauthorized"}, status_code=401)
         return await call_next(request)
     if secret != settings.app_secret:

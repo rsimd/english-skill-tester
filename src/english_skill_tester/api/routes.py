@@ -44,6 +44,13 @@ async def list_sessions() -> list[dict]:
     return sessions
 
 
+@router.get("/sessions/history")
+async def get_score_history() -> dict:
+    """Return historical session scores."""
+    settings = get_settings()
+    return read_score_history(settings.sessions_dir)
+
+
 @router.get("/sessions/{session_id}")
 async def get_session(session_id: str) -> dict:
     """Get a specific session's full data."""
@@ -53,13 +60,6 @@ async def get_session(session_id: str) -> dict:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Session not found")
     return json.loads(path.read_text())
-
-
-@router.get("/sessions/history")
-async def get_score_history() -> dict:
-    """Return historical session scores."""
-    settings = get_settings()
-    return read_score_history(settings.sessions_dir)
 
 
 @router.get("/audio/devices")
