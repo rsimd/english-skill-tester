@@ -1,5 +1,6 @@
 """Tests for assessment scoring modules."""
 
+import pytest
 
 from english_skill_tester.assessment.calibration import (
     calibrate_fluency_score,
@@ -9,10 +10,13 @@ from english_skill_tester.assessment.calibration import (
     get_level_label,
 )
 from english_skill_tester.assessment.metrics import (
+    categorize_error_patterns,
+    compute_cefr_vocabulary_distribution,
     compute_fluency_metrics,
     compute_grammar_metrics,
     compute_vocabulary_richness,
     compute_word_frequency_score,
+    estimate_cefr_from_vocabulary,
 )
 from english_skill_tester.assessment.rule_based import RuleBasedScorer
 from english_skill_tester.models.assessment import (
@@ -160,6 +164,81 @@ class TestComponentScores:
         # Weighted average check
         expected = 80 * 0.20 + 70 * 0.25 + 60 * 0.20 + 50 * 0.15 + 40 * 0.15 + 30 * 0.05
         assert abs(overall - expected) < 0.01
+
+
+class TestCefrVocabularyDistribution:
+    def test_empty_text(self):
+        result = compute_cefr_vocabulary_distribution("")
+        assert result == {"A1_A2": 0.0, "B1_B2": 0.0, "C1_plus": 0.0}
+
+    def test_basic_words_only(self):
+        # "the", "a", "is", "in" are all BASIC_WORDS → high A1_A2 ratio
+        result = compute_cefr_vocabulary_distribution(
+            "the cat is in the house and the dog is happy"
+        )
+        assert result["A1_A2"] > 0.7
+        assert result["A1_A2"] + result["B1_B2"] + result["C1_plus"] == pytest.approx(1.0, abs=0.01)
+
+    def test_intermediate_words(self):
+        result = compute_cefr_vocabulary_distribution(
+            "the research strategy demonstrates significant potential for development"
+        )
+        assert result["B1_B2"] > 0.0
+
+    def test_advanced_words(self):
+        result = compute_cefr_vocabulary_distribution(
+            "epistemological paradigms necessitate unprecedented phenomenological scrutiny"
+        )
+        assert result["C1_plus"] > 0.5
+
+
+class TestEstimateCefrFromVocabulary:
+    def test_a1_high_basic(self):
+        dist = {"A1_A2": 0.90, "B1_B2": 0.05, "C1_plus": 0.05}
+        assert estimate_cefr_from_vocabulary(dist) == "A1"
+
+    def test_a2_moderate_basic(self):
+        dist = {"A1_A2": 0.75, "B1_B2": 0.15, "C1_plus": 0.10}
+        assert estimate_cefr_from_vocabulary(dist) == "A2"
+
+    def test_c1_high_advanced(self):
+        dist = {"A1_A2": 0.30, "B1_B2": 0.35, "C1_plus": 0.35}
+        assert estimate_cefr_from_vocabulary(dist) == "C1"
+
+    def test_b2_high_intermediate(self):
+        dist = {"A1_A2": 0.50, "B1_B2": 0.35, "C1_plus": 0.15}
+        assert estimate_cefr_from_vocabulary(dist) == "B2"
+
+    def test_b1_balanced(self):
+        dist = {"A1_A2": 0.55, "B1_B2": 0.25, "C1_plus": 0.20}
+        assert estimate_cefr_from_vocabulary(dist) == "B1"
+
+
+class TestCategorizeErrorPatterns:
+    def test_empty_list(self):
+        result = categorize_error_patterns([])
+        assert result == {}
+
+    def test_dict_errors_with_type(self):
+        errors = [
+            {"type": "tense_error", "text": "he go", "correction": "he went"},
+            {"type": "tense_error", "text": "she go", "correction": "she went"},
+            {"type": "article_omission", "text": "a book", "correction": "the book"},
+        ]
+        result = categorize_error_patterns(errors)
+        assert result["tense_error"] == 2
+        assert result["article_omission"] == 1
+
+    def test_string_errors_heuristic(self):
+        errors = ["article missing before noun", "tense error in clause"]
+        result = categorize_error_patterns(errors)
+        assert result.get("article_omission", 0) >= 1
+        assert result.get("tense_error", 0) >= 1
+
+    def test_dict_errors_fallback_to_heuristic(self):
+        errors = [{"error": "subject verb agreement issue", "suggestion": "fix it"}]
+        result = categorize_error_patterns(errors)
+        assert result.get("subject_verb_agreement", 0) >= 1
 
 
 class TestRuleBasedScorer:

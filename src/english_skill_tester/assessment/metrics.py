@@ -363,3 +363,113 @@ def compute_word_frequency_score(text: str) -> float:
         return 50.0
 
     return calculate_vocabulary_score(words)
+
+
+def compute_cefr_vocabulary_distribution(text: str) -> dict[str, float]:
+    """
+    テキスト中の語彙をCEFRレベル別に分類し、使用率を返す。
+    A-003: 語彙レベル自動推定
+
+    Returns:
+        {"A1_A2": 0.5, "B1_B2": 0.3, "C1_plus": 0.2}
+    """
+    words = [w.lower() for w in text.split() if w.isalpha()]
+    if not words:
+        return {"A1_A2": 0.0, "B1_B2": 0.0, "C1_plus": 0.0}
+
+    a1_a2_count = sum(1 for w in words if w in BASIC_WORDS)
+    b1_b2_count = sum(1 for w in words if w in INTERMEDIATE_WORDS and w not in BASIC_WORDS)
+    c1_plus_count = len(words) - a1_a2_count - b1_b2_count
+
+    total = len(words)
+    return {
+        "A1_A2": round(a1_a2_count / total, 3),
+        "B1_B2": round(b1_b2_count / total, 3),
+        "C1_plus": round(c1_plus_count / total, 3),
+    }
+
+
+def estimate_cefr_from_vocabulary(distribution: dict[str, float]) -> str:
+    """
+    語彙分布からCEFRレベルを推定する。
+    A-003の出力をCEFRに変換。
+
+    Args:
+        distribution: compute_cefr_vocabulary_distribution()の出力
+
+    Returns:
+        CEFR level string: "A1", "A2", "B1", "B2", "C1"
+    """
+    a1_a2 = distribution.get("A1_A2", 0)
+    b1_b2 = distribution.get("B1_B2", 0)
+    c1_plus = distribution.get("C1_plus", 0)
+
+    if a1_a2 >= 0.85:
+        return "A1"
+    elif a1_a2 >= 0.70:
+        return "A2"
+    elif c1_plus >= 0.30:
+        return "C1"
+    elif b1_b2 >= 0.30:
+        return "B2"
+    else:
+        return "B1"
+
+
+# 日本語話者3大弱点パターン (D-016と連携)
+_ARTICLE_PATTERN = re.compile(
+    r'\b(i|he|she|they|we|it|you)\s+(?:a|an|the)\b|'
+    r'\b(?:have|has|had)\s+(?:a|an|the)\b',
+    re.IGNORECASE
+)
+_PREPOSITION_COMMON = frozenset([
+    "in", "on", "at", "to", "for", "with", "by", "from",
+    "about", "into", "through", "during", "before", "after",
+])
+
+
+def categorize_error_patterns(grammar_errors: list[dict]) -> dict[str, int]:
+    """
+    grammar_errors (既存の_check_grammar_llm出力) からエラーパターンを分類。
+    D-009: エラーパターンDB蓄積用
+
+    Args:
+        grammar_errors: [{"type": "tense_error", "text": "...", "correction": "..."}, ...]
+                       または [{"error": "...", "suggestion": "..."}, ...] または list[str]
+
+    Returns:
+        {"article_omission": 2, "tense_error": 1, "preposition_error": 1, ...}
+    """
+    counts: dict[str, int] = {}
+
+    for error in grammar_errors:
+        if isinstance(error, dict):
+            error_type = (
+                error.get("type")
+                or error.get("error_type")
+                or _classify_error_heuristic(str(error))
+            )
+        else:
+            error_type = _classify_error_heuristic(str(error))
+        if error_type:
+            counts[error_type] = counts.get(error_type, 0) + 1
+
+    return counts
+
+
+def _classify_error_heuristic(error_text: str) -> str:
+    """エラーテキストからヒューリスティックで種別を推定する（フォールバック）"""
+    text = error_text.lower()
+    if any(w in text for w in ["article", "a/an", "the ", " a ", " an "]):
+        return "article_omission"
+    if any(w in text for w in ["tense", "past", "present", "verb form"]):
+        return "tense_error"
+    if any(w in text for w in ["preposition", " in ", " on ", " at "]):
+        return "preposition_error"
+    if any(w in text for w in ["order", "word order", "syntax"]):
+        return "word_order"
+    if any(w in text for w in ["agreement", "subject", "singular", "plural"]):
+        return "subject_verb_agreement"
+    if any(w in text for w in ["collocation", "natural", "combination"]):
+        return "collocation_error"
+    return "other"
