@@ -72,7 +72,7 @@ class Settings(BaseSettings):
 
     # OpenAI
     openai_api_key: str = Field(description="OpenAI API key")
-    realtime_model: str = Field(default="gpt-4o-realtime-preview-2024-12-17")
+    realtime_model: str = Field(default="gpt-realtime-1.5")
     evaluation_model: str = Field(default="gpt-4o-mini")
 
     # Authentication (optional: None disables auth)

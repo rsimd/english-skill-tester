@@ -34,7 +34,7 @@ class RealtimeClient:
         model: Realtime model identifier.
     """
 
-    def __init__(self, api_key: str, model: str = "gpt-4o-realtime-preview-2024-12-17"):
+    def __init__(self, api_key: str, model: str = "gpt-realtime-1.5"):
         self.api_key = api_key
         self.model = model
         self._ws: ClientConnection | None = None

@@ -15,5 +15,5 @@ assessment:
   score_update_interval_seconds: 3
 
 openai:
-  realtime_model: "gpt-4o-realtime-preview-2024-12-17"
+  realtime_model: "gpt-realtime-1.5"
   evaluation_model: "gpt-4o-mini"

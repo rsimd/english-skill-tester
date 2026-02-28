@@ -38,7 +38,7 @@ and renders a 3D VRM character in the browser as a visual conversation partner.
 │  │  ┌─────────────────────────────┐  │                             │
 │  │  │      RealtimeClient         │  │                             │
 │  │  │  (WebSocket to OpenAI)      │──┼──→ OpenAI Realtime API      │
-│  │  │  - send_audio (PCM16/b64)   │  │     gpt-4o-realtime-preview │
+│  │  │  - send_audio (PCM16/b64)   │  │     gpt-realtime-1.5        │
 │  │  │  - receive_loop (events)    │  │                             │
 │  │  │  - function call dispatch   │  │                             │
 │  │  └──────────────┬──────────────┘  │                             │
@@ -223,7 +223,7 @@ Overall = weighted sum: vocab(20%) + grammar(25%) + fluency(20%) + comprehension
 | Layer | Technology |
 |-------|-----------|
 | Backend | Python 3.12, FastAPI, uvicorn |
-| AI | OpenAI Realtime API (gpt-4o-realtime-preview), gpt-4o-mini |
+| AI | OpenAI Realtime API (gpt-realtime-1.5), gpt-4o-mini |
 | Audio | sounddevice (PortAudio), numpy, scipy |
 | NLP | textstat (readability), spaCy en_core_web_sm (dependency, currently unused) |
 | Frontend | Vanilla JS, Three.js r169, @pixiv/three-vrm 3.3.3 |
