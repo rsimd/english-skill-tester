@@ -39,6 +39,17 @@ class SkillLevel(StrEnum):
         else:
             return cls.ADVANCED
 
+    @property
+    def cefr(self) -> str:
+        mapping = {
+            "beginner": "A1",
+            "elementary": "A2",
+            "intermediate": "B1",
+            "upper_intermediate": "B2",
+            "advanced": "C1",
+        }
+        return mapping.get(self.value, "B1")
+
 
 class Utterance(BaseModel):
     """A single utterance in the conversation."""
