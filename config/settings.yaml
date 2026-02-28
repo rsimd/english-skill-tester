@@ -17,3 +17,6 @@ assessment:
 openai:
   realtime_model: "gpt-realtime-1.5"
   evaluation_model: "gpt-4o-mini"
+
+storage:
+  user_profiles_dir: "data/user_profiles"

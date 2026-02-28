@@ -116,6 +116,12 @@ class Settings(BaseSettings):
         return d
 
     @property
+    def user_profiles_dir(self) -> Path:
+        d = self.project_root / "data" / "user_profiles"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
     def frontend_dir(self) -> Path:
         return self.project_root / "frontend"
 

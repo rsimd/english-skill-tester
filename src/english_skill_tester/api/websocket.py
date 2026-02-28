@@ -23,13 +23,31 @@ from english_skill_tester.audio.encoder import base64_to_pcm16, pcm16_to_base64
 from english_skill_tester.audio.playback import AudioPlayback
 from english_skill_tester.audio.recorder import AudioRecorder
 from english_skill_tester.config import Settings
+from english_skill_tester.conversation.prompt_engine import get_prompt_engine
+from english_skill_tester.conversation.prompts import BASE_PROMPT
 from english_skill_tester.conversation.strategy import ConversationStrategy
 from english_skill_tester.models.assessment import score_to_ielts, score_to_toeic
 from english_skill_tester.models.session import Session, SessionStatus
+from english_skill_tester.models.user_profile import UserProfile
 from english_skill_tester.realtime.client import RealtimeClient
 from english_skill_tester.storage.score_history import append_session_score
+from english_skill_tester.storage.user_profile import (
+    append_session_score as append_user_session_score,
+)
+from english_skill_tester.storage.user_profile import (
+    load_profile,
+    save_profile,
+)
 
 logger = structlog.get_logger()
+
+_LEVEL_TO_CEFR: dict[str, str] = {
+    "beginner": "A1",
+    "elementary": "A2",
+    "intermediate": "B1",
+    "upper_intermediate": "B2",
+    "advanced": "C1",
+}
 
 
 async def _execute_web_search(query: str, max_results: int = 3) -> str:
@@ -148,9 +166,13 @@ class SessionManager:
         settings: Settings,
         browser_ws: WebSocket,
         device_id: int | str | None = None,
+        user_id: str = "default",
+        user_profile: UserProfile | None = None,
     ):
         self.settings = settings
         self.browser_ws = browser_ws
+        self.user_id = user_id
+        self.user_profile = user_profile
         self.session = Session(session_id=str(uuid.uuid4()))
         self.strategy = ConversationStrategy()
         api_key = settings.openai_api_key  # centralized reference (P-SEC-001)
@@ -199,7 +221,17 @@ class SessionManager:
         self._setup_realtime_handlers()
         self.strategy.on_level_change(self._on_level_change)
 
-        initial_prompt = self.strategy.current_prompt
+        if self.user_profile:
+            level = self.strategy.current_level.value
+            cefr = _LEVEL_TO_CEFR.get(level, "B1")
+            engine = get_prompt_engine()
+            cefr_prompt = engine.build_prompt(cefr=cefr, user_profile=self.user_profile)
+            base = BASE_PROMPT.format(context="General conversation practice session.")
+            initial_prompt = (
+                f"{base}\n\n{cefr_prompt}" if cefr_prompt else self.strategy.current_prompt
+            )
+        else:
+            initial_prompt = self.strategy.current_prompt
         await self.realtime.connect(initial_prompt)
 
         try:
@@ -520,6 +552,19 @@ class SessionManager:
         )
         logger.info("score_history_saved", session_id=self.session.session_id)
 
+        if self.user_profile is not None:
+            try:
+                cefr = _LEVEL_TO_CEFR.get(self.session.current_level.value, "B1")
+                append_user_session_score(
+                    user_id=self.user_id,
+                    session_id=self.session.session_id,
+                    overall_score=assessment.overall_score,
+                    cefr=cefr,
+                )
+                logger.info("user_profile_updated", user_id=self.user_id)
+            except Exception:
+                logger.warning("user_profile_update_failed", user_id=self.user_id)
+
     def _detect_emotion(self, text: str) -> str:
         """Detect emotion from AI speech text. Returns VRM expression name."""
         text_lower = text.lower()
@@ -583,7 +628,20 @@ async def handle_browser_websocket(
                 if session_mgr:
                     await session_mgr.stop()
                 device_id = data.get("device_id")
-                session_mgr = SessionManager(settings, websocket, device_id=device_id)
+                user_id = data.get("user_id", "default")
+                self_reported_level = data.get("self_reported_level")
+                try:
+                    user_profile = load_profile(user_id)
+                    if self_reported_level:
+                        user_profile.self_reported_level = self_reported_level
+                        save_profile(user_profile)
+                except Exception:
+                    logger.warning("profile_load_failed", user_id=user_id)
+                    user_profile = None
+                session_mgr = SessionManager(
+                    settings, websocket, device_id=device_id,
+                    user_id=user_id, user_profile=user_profile,
+                )
                 await session_mgr.start()
 
             elif msg_type == "stop_session":
