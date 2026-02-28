@@ -5,6 +5,8 @@ __pycache__/
 data/recordings/
 data/sessions/
 frontend/models/*.vrm
+Alicia_VRM.zip
+*.vrm
 *.egg-info/
 dist/
 build/
