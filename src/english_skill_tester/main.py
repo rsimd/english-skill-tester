@@ -49,9 +49,13 @@ else:
 settings = Settings()
 
 app = FastAPI(title="English Skill Tester", version="0.1.0")
+_allowed_origins_env = os.getenv(
+    "ALLOWED_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000"
+)
+allowed_origins = [o.strip() for o in _allowed_origins_env.split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -81,6 +85,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     """Browser WebSocket endpoint."""
     await handle_browser_websocket(websocket, settings)
 
+
+# Mount recordings for audio playback (must be before frontend catch-all)
+app.mount(
+    "/data/recordings",
+    StaticFiles(directory=str(settings.recordings_dir)),
+    name="recordings",
+)
 
 # Mount frontend static files (must be after API routes)
 app.mount("/", StaticFiles(directory=str(settings.frontend_dir), html=True), name="frontend")

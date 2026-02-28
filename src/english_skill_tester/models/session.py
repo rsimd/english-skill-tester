@@ -78,8 +78,8 @@ class Session(BaseModel):
         return " ".join(u.text for u in self.user_utterances if u.text)
 
     @property
-    def duration_seconds(self) -> float | None:
-        """Session duration in seconds."""
-        if self.ended_at:
-            return (self.ended_at - self.started_at).total_seconds()
-        return None
+    def duration_seconds(self) -> float:
+        """Session duration in seconds (uses current time if session is still active)."""
+        if self.ended_at is None:
+            return (datetime.now() - self.started_at).total_seconds()
+        return (self.ended_at - self.started_at).total_seconds()

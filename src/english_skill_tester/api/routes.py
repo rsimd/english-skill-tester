@@ -23,8 +23,8 @@ def validate_session_id(session_id: str) -> str:
 
 
 @router.get("/sessions")
-async def list_sessions() -> list[dict]:
-    """List all saved sessions."""
+async def list_sessions(limit: int = 50, offset: int = 0) -> list[dict]:
+    """List all saved sessions with pagination."""
     settings = get_settings()
     sessions = []
     sessions_dir = settings.sessions_dir
@@ -41,7 +41,7 @@ async def list_sessions() -> list[dict]:
                 })
             except Exception:
                 logger.warning("session_parse_error", path=str(path))
-    return sessions
+    return sessions[offset:offset + limit]
 
 
 @router.get("/sessions/history")

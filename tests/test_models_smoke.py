@@ -161,7 +161,9 @@ class TestSession:
 
     def test_duration_none_without_end(self):
         session = Session(session_id="test-004")
-        assert session.duration_seconds is None
+        # L-005: active sessions return elapsed time (not None)
+        assert isinstance(session.duration_seconds, float)
+        assert session.duration_seconds >= 0
 
     def test_duration_with_end(self):
         from datetime import timedelta
