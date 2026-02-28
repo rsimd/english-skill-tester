@@ -94,8 +94,24 @@
                 body.appendChild(utteranceSpan);
                 body.appendChild(statusSpan);
 
+                const scores = document.createElement('div');
+                scores.className = 'session-card-scores';
+                const scoreText = s.overall_score != null ? Math.round(s.overall_score) + '/100' : '—';
+                const toeicText = s.toeic_estimate != null ? 'TOEIC ' + s.toeic_estimate : '—';
+                const durationText = s.duration_seconds != null ? formatDuration(s.duration_seconds) : '—';
+                const scoreSpan = document.createElement('span');
+                scoreSpan.textContent = 'Score: ' + scoreText;
+                const toeicSpan = document.createElement('span');
+                toeicSpan.textContent = toeicText;
+                const durationSpan = document.createElement('span');
+                durationSpan.textContent = durationText;
+                scores.appendChild(scoreSpan);
+                scores.appendChild(toeicSpan);
+                scores.appendChild(durationSpan);
+
                 card.appendChild(header);
                 card.appendChild(body);
+                card.appendChild(scores);
                 list.appendChild(card);
             });
         }
@@ -133,9 +149,17 @@
             // Audio playback
             if (session.recording_path) {
                 document.getElementById('review-recordings-section').classList.remove('hidden');
+                const filename = session.recording_path.split('/').pop();
+                document.getElementById('review-audio').src = '/data/recordings/' + filename;
             } else {
                 document.getElementById('review-recordings-section').classList.add('hidden');
             }
+        }
+
+        function formatDuration(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m + ':' + String(s).padStart(2, '0');
         }
 
         function escapeHtml(text) {

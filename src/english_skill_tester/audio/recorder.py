@@ -1,5 +1,6 @@
 """Bidirectional audio recorder for session archival."""
 
+import uuid
 import wave
 from pathlib import Path
 
@@ -37,8 +38,9 @@ class AudioRecorder:
         """Start recording — opens temporary WAV files for streaming write."""
         self._recording = True
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self._input_temp_path = self.output_dir / "_rec_input.tmp.wav"
-        self._output_temp_path = self.output_dir / "_rec_output.tmp.wav"
+        uid = uuid.uuid4().hex[:8]
+        self._input_temp_path = self.output_dir / f"_rec_{uid}_input.tmp.wav"
+        self._output_temp_path = self.output_dir / f"_rec_{uid}_output.tmp.wav"
         self._input_file = wave.open(str(self._input_temp_path), "wb")
         self._input_file.setnchannels(self.channels)
         self._input_file.setsampwidth(2)  # 16-bit
