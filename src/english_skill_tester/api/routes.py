@@ -3,6 +3,7 @@
 import json
 import uuid
 
+import sounddevice as sd
 import structlog
 from fastapi import APIRouter, HTTPException
 
@@ -59,6 +60,26 @@ async def get_score_history() -> dict:
     """Return historical session scores."""
     settings = get_settings()
     return read_score_history(settings.sessions_dir)
+
+
+@router.get("/audio/devices")
+async def list_audio_devices() -> dict:
+    """List available audio input and output devices."""
+    devices = sd.query_devices()
+    device_list = []
+    for i, dev in enumerate(devices):
+        device_list.append({
+            "index": i,
+            "name": dev["name"],
+            "max_input_channels": dev["max_input_channels"],
+            "max_output_channels": dev["max_output_channels"],
+            "default_samplerate": dev["default_samplerate"],
+        })
+    return {
+        "devices": device_list,
+        "default_input": sd.default.device[0],
+        "default_output": sd.default.device[1],
+    }
 
 
 @router.get("/health")

@@ -121,10 +121,36 @@
         });
     }
 
+    // ---- Audio device selection ----
+
+    async function loadAudioDevices() {
+        try {
+            const res = await fetch('/api/audio/devices');
+            const data = await res.json();
+            const inputSel = document.getElementById('input-device');
+            const outputSel = document.getElementById('output-device');
+            data.devices.forEach(dev => {
+                if (dev.max_input_channels > 0) {
+                    const opt = new Option(dev.name, dev.index);
+                    if (dev.index === data.default_input) opt.selected = true;
+                    inputSel.appendChild(opt);
+                }
+                if (dev.max_output_channels > 0) {
+                    const opt = new Option(dev.name, dev.index);
+                    if (dev.index === data.default_output) opt.selected = true;
+                    outputSel.appendChild(opt);
+                }
+            });
+        } catch (e) {
+            console.warn('Failed to load audio devices:', e);
+        }
+    }
+
     // ---- Initialize ----
 
     function init() {
         ws.connect();
+        loadAudioDevices();
 
         // Initialize 3D character — retry until module script has loaded
         function tryInitCharacter() {

@@ -97,6 +97,16 @@
 
         <!-- Controls -->
         <footer id="controls">
+            <div id="device-selector" style="margin: 8px 0;">
+                <label for="input-device">マイク:</label>
+                <select id="input-device">
+                    <option value="">デフォルト</option>
+                </select>
+                <label for="output-device" style="margin-left: 8px;">スピーカー:</label>
+                <select id="output-device">
+                    <option value="">デフォルト</option>
+                </select>
+            </div>
             <button id="btn-start" class="btn btn-primary">Start Conversation</button>
             <button id="btn-stop" class="btn btn-danger" disabled>Stop</button>
             <span id="timer" class="timer">00:00</span>
