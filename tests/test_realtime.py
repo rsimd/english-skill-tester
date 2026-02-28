@@ -48,7 +48,7 @@ class TestEventBuilders:
 
 class TestRealtimeTools:
     def test_tools_defined(self):
-        assert len(REALTIME_TOOLS) == 2
+        assert len(REALTIME_TOOLS) == 3
 
     def test_set_expression_tool(self):
         tool = REALTIME_TOOLS[0]
@@ -63,3 +63,10 @@ class TestRealtimeTools:
         params = tool["parameters"]["properties"]["gesture"]
         assert "nod" in params["enum"]
         assert "wave" in params["enum"]
+
+    def test_end_session_tool(self):
+        tool = REALTIME_TOOLS[2]
+        assert tool["name"] == "end_session"
+        params = tool["parameters"]["properties"]["farewell_reason"]
+        assert "user_request" in params["enum"]
+        assert "time_limit" in params["enum"]

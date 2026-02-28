@@ -46,4 +46,25 @@ REALTIME_TOOLS: list[dict] = [
             "required": ["gesture"],
         },
     },
+    {
+        "type": "function",
+        "name": "end_session",
+        "description": (
+            "End the conversation session when the user indicates they want to stop. "
+            "Only call this after delivering a natural farewell message. "
+            "Triggers: 'goodbye', 'see you', 'I have to go', 'let's stop', "
+            "'もういいです', '終わり', '終了' and similar expressions of intent to end."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "farewell_reason": {
+                    "type": "string",
+                    "enum": ["user_request", "time_limit"],
+                    "description": "Reason for ending the session.",
+                },
+            },
+            "required": ["farewell_reason"],
+        },
+    },
 ]

@@ -274,6 +274,14 @@ class SessionManager:
                     "action_type": "gesture",
                     "value": args.get("gesture", "nod"),
                 })
+            elif name == "end_session":
+                # Notify browser to transition to evaluation screen
+                await self._send_to_browser({
+                    "type": "session_end",
+                    "reason": args.get("farewell_reason", "user_request"),
+                })
+                # Schedule session stop (allow AI's farewell audio to finish first)
+                asyncio.create_task(self._delayed_stop(delay=2.0))
 
         self.realtime.on("response.audio.delta", on_audio_delta)
         self.realtime.on("response.created", on_response_started)
@@ -302,6 +310,12 @@ class SessionManager:
             "play_gesture",
             lambda gesture: json.dumps(
                 {"status": "ok", "gesture": gesture}
+            ),
+        )
+        self.realtime.register_function(
+            "end_session",
+            lambda farewell_reason: json.dumps(
+                {"status": "ok", "farewell_reason": farewell_reason}
             ),
         )
 
@@ -414,6 +428,11 @@ class SessionManager:
             ielts_estimate=score_to_ielts(assessment.overall_score),
         )
         logger.info("score_history_saved", session_id=self.session.session_id)
+
+    async def _delayed_stop(self, delay: float = 2.0) -> None:
+        """Wait briefly for farewell audio to play, then stop session."""
+        await asyncio.sleep(delay)
+        await self.stop()
 
     async def _send_to_browser(self, data: dict) -> None:
         """Send a message to the browser WebSocket."""
