@@ -32,7 +32,7 @@ class YamlSettingsSource(PydanticBaseSettingsSource):
         if not yaml_path.exists():
             return {}
 
-        with open(yaml_path, 'r', encoding='utf-8') as f:
+        with open(yaml_path, encoding='utf-8') as f:
             data = yaml.safe_load(f) or {}
 
         # Flatten nested structure to match Settings field names
@@ -45,9 +45,14 @@ class YamlSettingsSource(PydanticBaseSettingsSource):
             flattened['audio_channels'] = data['audio'].get('channels')
             flattened['audio_chunk_duration_ms'] = data['audio'].get('chunk_duration_ms')
         if 'assessment' in data:
-            flattened['llm_eval_interval_utterances'] = data['assessment'].get('llm_eval_interval_utterances')
-            flattened['llm_eval_interval_seconds'] = data['assessment'].get('llm_eval_interval_seconds')
-            flattened['score_update_interval_seconds'] = data['assessment'].get('score_update_interval_seconds')
+            assessment = data['assessment']
+            flattened['llm_eval_interval_utterances'] = (
+                assessment.get('llm_eval_interval_utterances')
+            )
+            flattened['llm_eval_interval_seconds'] = assessment.get('llm_eval_interval_seconds')
+            flattened['score_update_interval_seconds'] = (
+                assessment.get('score_update_interval_seconds')
+            )
         if 'openai' in data:
             flattened['realtime_model'] = data['openai'].get('realtime_model')
             flattened['evaluation_model'] = data['openai'].get('evaluation_model')
@@ -141,7 +146,7 @@ class Settings(BaseSettings):
         )
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def get_settings() -> Settings:
     """Get application settings singleton."""
     return Settings()
@@ -149,19 +154,19 @@ def get_settings() -> Settings:
 
 def load_persona(persona_name: str = "default") -> dict:
     """Load persona configuration from YAML file."""
-    persona_path = Path(__file__).parent.parent.parent / "config" / "personas" / f"{persona_name}.yaml"
+    persona_path = _find_project_root() / "config" / "personas" / f"{persona_name}.yaml"
     if not persona_path.exists():
         raise FileNotFoundError(f"Persona file not found: {persona_path}")
-    with open(persona_path, 'r', encoding='utf-8') as f:
+    with open(persona_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
     return data.get('persona', {})
 
 
 def load_level_prompts() -> dict:
     """Load level-specific prompts from YAML file."""
-    prompts_path = Path(__file__).parent.parent.parent / "config" / "prompts" / "levels.yaml"
+    prompts_path = _find_project_root() / "config" / "prompts" / "levels.yaml"
     if not prompts_path.exists():
         raise FileNotFoundError(f"Prompts file not found: {prompts_path}")
-    with open(prompts_path, 'r', encoding='utf-8') as f:
+    with open(prompts_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
     return data.get('levels', {})

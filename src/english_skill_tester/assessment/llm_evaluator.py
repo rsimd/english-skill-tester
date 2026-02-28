@@ -9,6 +9,24 @@ from english_skill_tester.models.assessment import ComponentScores
 
 logger = structlog.get_logger()
 
+MAX_TRANSCRIPT_UTTERANCES = 20
+
+
+def _truncate_transcript(transcript: list[dict]) -> list[dict]:
+    """Limit transcript to last N utterances to control token usage."""
+    if len(transcript) <= MAX_TRANSCRIPT_UTTERANCES:
+        return transcript
+    truncated = transcript[-MAX_TRANSCRIPT_UTTERANCES:]
+    total = len(transcript)
+    omitted = total - MAX_TRANSCRIPT_UTTERANCES
+    context_note = {
+        "role": "system",
+        "text": f"[Context: This is a continued conversation. "
+                f"{omitted} earlier exchanges have been omitted.]",
+    }
+    return [context_note] + truncated
+
+
 EVAL_SYSTEM_PROMPT = """\
 You are an expert English language assessor. Analyze the following conversation \
 transcript between a user (language learner) and an AI conversation partner.
@@ -69,6 +87,8 @@ class LLMEvaluator:
         """
         if not transcript:
             return ComponentScores()
+
+        transcript = _truncate_transcript(transcript)
 
         # Format transcript for the prompt
         formatted = "\n".join(
