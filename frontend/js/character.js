@@ -15,6 +15,10 @@ let currentAudioLevel = 0;
 let targetAudioLevel = 0;
 let currentExpression = 'neutral';
 let aiSpeaking = false;
+let isListening = false;
+let bodyBounceY = 0;
+let gestureScheduleTimer = 0;
+let gestureScheduleInterval = 3.0;
 
 // P-VRM-001: Smooth expression transition state (lerp)
 const EMOTION_PRESETS = ['happy', 'angry', 'sad', 'surprised', 'relaxed'];
@@ -34,6 +38,10 @@ let headIdleTime = 0;
 let activeGesture = null;
 let gestureProgress = 0;
 let gestureOriginalRotations = {}; // Store multiple bone rotations
+
+// Auto-gesture pools for speaking/listening modes
+const SPEAKING_GESTURES = ['nod', 'wave', 'explain', 'open_palms', 'point', 'thumbs_up'];
+const LISTENING_GESTURES = ['nod', 'nod', 'lean_forward', 'listen'];
 
 // Emoji mappings for fallback
 const EXPRESSION_EMOJI = {
@@ -222,6 +230,9 @@ async function loadModel(source) {
         gestureOriginalRotations = {};
         currentAudioLevel = 0;
         targetAudioLevel = 0;
+        bodyBounceY = 0;
+        isListening = false;
+        gestureScheduleTimer = 0;
 
         scene.remove(vrm.scene);
         vrm.scene.traverse((obj) => {
@@ -280,7 +291,7 @@ function animate() {
     if (vrm) {
         // --- Idle Breathing ---
         if (vrm.scene) {
-            vrm.scene.position.y = Math.sin(time * 1.2) * 0.003;
+            vrm.scene.position.y = Math.sin(time * 1.2) * 0.003 + bodyBounceY;
         }
 
         // --- Blinking ---
@@ -289,26 +300,38 @@ function animate() {
         // --- Head idle sway ---
         updateHeadIdle(time);
 
-        // --- Body idle: spine/upperChest/shoulder gentle sway (P-VRM-003) ---
+        // --- Body sway: mode-aware (P-VRM-003 + dynamic gesture scheduling) ---
         if (!activeGesture && vrm.humanoid) {
-            const spine = vrm.humanoid?.getNormalizedBoneNode('spine');
-            const upperChest = vrm.humanoid?.getNormalizedBoneNode('upperChest');
-            const leftShoulder = vrm.humanoid?.getNormalizedBoneNode('leftShoulder');
-            const rightShoulder = vrm.humanoid?.getNormalizedBoneNode('rightShoulder');
+            if (aiSpeaking) {
+                updateSpeakingIdle(time);
+            } else if (isListening) {
+                updateListeningIdle(time);
+            } else {
+                // Gentle idle sway (P-VRM-003)
+                const spine = vrm.humanoid?.getNormalizedBoneNode('spine');
+                const upperChest = vrm.humanoid?.getNormalizedBoneNode('upperChest');
+                const leftShoulder = vrm.humanoid?.getNormalizedBoneNode('leftShoulder');
+                const rightShoulder = vrm.humanoid?.getNormalizedBoneNode('rightShoulder');
 
-            if (spine) {
-                spine.rotation.z = Math.sin(time * 0.3) * 0.02;
-                spine.rotation.x = Math.sin(time * 0.5) * 0.01;
+                if (spine) {
+                    spine.rotation.z = Math.sin(time * 0.3) * 0.02;
+                    spine.rotation.x = Math.sin(time * 0.5) * 0.01;
+                }
+                if (upperChest) {
+                    upperChest.rotation.z = Math.sin(time * 0.3 + 0.5) * 0.015;
+                }
+                if (leftShoulder) {
+                    leftShoulder.rotation.z = Math.sin(time * 0.4) * 0.03;
+                }
+                if (rightShoulder) {
+                    rightShoulder.rotation.z = -Math.sin(time * 0.4 + 0.3) * 0.03;
+                }
             }
-            if (upperChest) {
-                upperChest.rotation.z = Math.sin(time * 0.3 + 0.5) * 0.015;
-            }
-            if (leftShoulder) {
-                leftShoulder.rotation.z = Math.sin(time * 0.4) * 0.03;
-            }
-            if (rightShoulder) {
-                rightShoulder.rotation.z = -Math.sin(time * 0.4 + 0.3) * 0.03;
-            }
+        }
+
+        // --- Auto-schedule gestures during speech/listening ---
+        if (aiSpeaking || isListening) {
+            updateGestureSchedule(delta);
         }
 
         // --- Lip sync ---
@@ -394,6 +417,67 @@ function updateHeadIdle(time) {
     head.rotation.x = baseX;
     head.rotation.y = baseY;
     head.rotation.z = baseZ;
+}
+
+// ========== SPEAKING / LISTENING IDLE ==========
+
+function updateSpeakingIdle(time) {
+    if (!vrm || !vrm.humanoid) return;
+    const spine = vrm.humanoid.getNormalizedBoneNode('spine');
+    const upperChest = vrm.humanoid.getNormalizedBoneNode('upperChest');
+    const leftShoulder = vrm.humanoid.getNormalizedBoneNode('leftShoulder');
+    const rightShoulder = vrm.humanoid.getNormalizedBoneNode('rightShoulder');
+
+    // More dynamic movement during speech
+    if (spine) {
+        spine.rotation.z = Math.sin(time * 0.8) * 0.05;
+        spine.rotation.x = Math.sin(time * 1.0) * 0.025;
+    }
+    if (upperChest) {
+        upperChest.rotation.z = Math.sin(time * 0.8 + 0.5) * 0.035;
+    }
+    if (leftShoulder) {
+        leftShoulder.rotation.z = Math.sin(time * 0.9) * 0.06;
+    }
+    if (rightShoulder) {
+        rightShoulder.rotation.z = -Math.sin(time * 0.9 + 0.3) * 0.06;
+    }
+}
+
+function updateListeningIdle(time) {
+    if (!vrm || !vrm.humanoid) return;
+    const spine = vrm.humanoid.getNormalizedBoneNode('spine');
+    const upperChest = vrm.humanoid.getNormalizedBoneNode('upperChest');
+    const leftShoulder = vrm.humanoid.getNormalizedBoneNode('leftShoulder');
+    const rightShoulder = vrm.humanoid.getNormalizedBoneNode('rightShoulder');
+
+    // Attentive forward lean with micro-sway
+    if (spine) {
+        spine.rotation.x = 0.07 + Math.sin(time * 0.35) * 0.01;
+        spine.rotation.z = Math.sin(time * 0.2) * 0.01;
+    }
+    if (upperChest) {
+        upperChest.rotation.z = Math.sin(time * 0.2 + 0.4) * 0.01;
+    }
+    if (leftShoulder) {
+        leftShoulder.rotation.z = Math.sin(time * 0.3) * 0.015;
+    }
+    if (rightShoulder) {
+        rightShoulder.rotation.z = -Math.sin(time * 0.3 + 0.2) * 0.015;
+    }
+}
+
+function updateGestureSchedule(delta) {
+    if (activeGesture) return;
+
+    gestureScheduleTimer += delta;
+    if (gestureScheduleTimer >= gestureScheduleInterval) {
+        gestureScheduleTimer = 0;
+        gestureScheduleInterval = aiSpeaking ? (2.0 + Math.random() * 3.0) : (3.0 + Math.random() * 2.0);
+        const gestures = aiSpeaking ? SPEAKING_GESTURES : LISTENING_GESTURES;
+        const gesture = gestures[Math.floor(Math.random() * gestures.length)];
+        playGesture(gesture);
+    }
 }
 
 // ========== LIP SYNC ==========
@@ -735,6 +819,48 @@ function updateGesture(delta) {
             activeGesture = null;
         }
 
+    } else if (activeGesture === 'happy_bounce') {
+        // Happy body bounce - spring motion simulating a joyful hop
+        if (!spine) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 0.7;
+        if (gestureProgress < duration) {
+            const t = gestureProgress / duration;
+            const bounce = Math.sin(t * Math.PI * 4) * Math.exp(-t * 3);
+            bodyBounceY = bounce * 0.025;
+            spine.rotation.x = (gestureOriginalRotations.spine?.x ?? 0) + bounce * 0.06;
+            const lShoulder = vrm.humanoid.getNormalizedBoneNode('leftShoulder');
+            const rShoulder = vrm.humanoid.getNormalizedBoneNode('rightShoulder');
+            if (lShoulder) lShoulder.rotation.z = Math.sin(t * Math.PI * 2) * 0.08;
+            if (rShoulder) rShoulder.rotation.z = -Math.sin(t * Math.PI * 2) * 0.08;
+        } else {
+            bodyBounceY = 0;
+            setIdlePose();
+            activeGesture = null;
+        }
+
+    } else if (activeGesture === 'surprised_lean') {
+        // Surprised lean back - body pulls backward then returns
+        if (!spine) {
+            activeGesture = null;
+            return;
+        }
+        const duration = 0.9;
+        if (gestureProgress < duration) {
+            const t = gestureProgress / duration;
+            const easeIn = easeInOutCubic(Math.min(1, t * 4));
+            const easeOut = easeInOutCubic(Math.max(0, (t - 0.5) * 2));
+            const blend = easeIn * (1 - easeOut);
+            const spineOrig = gestureOriginalRotations.spine?.x ?? 0;
+            spine.rotation.x = spineOrig - 0.12 * blend;
+            if (head) head.rotation.x = -0.08 * blend;
+        } else {
+            setIdlePose();
+            activeGesture = null;
+        }
+
     } else if (activeGesture === 'idle_rest') {
         // Immediate transition to idle pose
         setIdlePose();
@@ -782,6 +908,17 @@ function setExpression(expression) {
         // DO NOT call setValue directly here — animate() handles the lerp
     }
 
+    // Emotion body language: trigger corresponding gesture
+    if (!activeGesture) {
+        if (expression === 'happy' || expression === 'encouraging') {
+            playGesture('happy_bounce');
+        } else if (expression === 'surprised') {
+            playGesture('surprised_lean');
+        } else if (expression === 'thinking') {
+            playGesture('thinking_pose');
+        }
+    }
+
     console.log('Expression set:', expression);
 }
 
@@ -814,7 +951,13 @@ function setAiSpeaking(speaking) {
     aiSpeaking = speaking;
     if (!speaking) {
         targetAudioLevel = 0;
+        gestureScheduleTimer = 0;
     }
+}
+
+function setListening(listening) {
+    isListening = listening;
+    gestureScheduleTimer = 0;
 }
 
 // Expose to global scope
@@ -824,5 +967,6 @@ window.CharacterController = {
     playGesture,
     setAudioLevel,
     setAiSpeaking,
+    setListening,
     loadModel,
 };
