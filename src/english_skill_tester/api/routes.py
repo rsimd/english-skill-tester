@@ -28,16 +28,23 @@ async def list_sessions(limit: int = 50, offset: int = 0) -> list[dict]:
     settings = get_settings()
     sessions = []
     sessions_dir = settings.sessions_dir
+    history = read_score_history(sessions_dir)
+    score_lookup = {s["session_id"]: s for s in history.get("sessions", [])}
     if sessions_dir.exists():
         for path in sorted(sessions_dir.glob("*.json"), reverse=True):
             try:
                 data = json.loads(path.read_text())
+                session_id = data.get("session_id", path.stem)
+                score_data = score_lookup.get(session_id, {})
                 sessions.append({
-                    "session_id": data.get("session_id", path.stem),
+                    "session_id": session_id,
                     "started_at": data.get("started_at", ""),
                     "status": data.get("status", ""),
                     "current_level": data.get("current_level", ""),
                     "utterance_count": len(data.get("utterances", [])),
+                    "overall_score": score_data.get("overall"),
+                    "toeic_estimate": score_data.get("toeic_estimate"),
+                    "duration_seconds": score_data.get("duration_seconds"),
                 })
             except Exception:
                 logger.warning("session_parse_error", path=str(path))
