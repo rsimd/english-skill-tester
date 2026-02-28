@@ -3,6 +3,7 @@
 import asyncio
 import json
 import random
+import re
 import time
 import uuid
 from datetime import datetime
@@ -27,6 +28,29 @@ from english_skill_tester.realtime.client import RealtimeClient
 from english_skill_tester.storage.score_history import append_session_score
 
 logger = structlog.get_logger()
+
+_EMOTION_PATTERNS = {
+    "happy": [
+        r"\b(great|excellent|wonderful|fantastic|amazing|perfect|love|awesome|brilliant|superb)\b",
+        r"\b(that'?s?\s+(great|good|right|correct|excellent))\b",
+        r"(😊|😄|🎉|👍)",
+    ],
+    "surprised": [
+        r"\b(wow|really|oh|ah|interesting|incredible|unbelievable|seriously)\b",
+        r"\b(i (didn'?t|never|can'?t) (know|believe|imagine))\b",
+    ],
+    "sad": [
+        r"\b(sorry|unfortunately|that'?s?\s+tough|difficult|hard|miss|sad|worried)\b",
+        r"\b(i'?m?\s+(sorry|afraid))\b",
+    ],
+    "relaxed": [
+        r"\b(i\s+see|understand|makes? sense|of course|certainly|sure|exactly)\b",
+        r"\b(that'?s?\s+(clear|understandable|fine|okay))\b",
+    ],
+    "angry": [
+        r"\b(no|wrong|incorrect|mistake|don'?t|shouldn'?t|must not)\b",
+    ],
+}
 
 
 class GestureController:
@@ -135,6 +159,7 @@ class SessionManager:
         )
         self._tasks: list[asyncio.Task] = []
         self._ai_speaking = False
+        self._expression_set_by_function = False
         self.gesture_ctrl = GestureController(self._send_to_browser)
 
     async def start(self) -> None:
@@ -216,6 +241,7 @@ class SessionManager:
 
         async def on_response_started(event: dict) -> None:
             self._ai_speaking = True
+            self._expression_set_by_function = False
             await self._send_to_browser({"type": "ai_speaking", "speaking": True})
 
         async def on_response_done(event: dict) -> None:
@@ -258,11 +284,14 @@ class SessionManager:
                 gesture = self.gesture_ctrl.analyze_context(transcript)
                 if gesture:
                     await self.gesture_ctrl._trigger(gesture)
+                # Rule-based emotion fallback (only if AI didn't call set_expression)
+                await self._on_ai_speech_text(transcript)
 
         async def on_function_call(event: dict) -> None:
             name = event.get("name", "")
             args = json.loads(event.get("arguments", "{}"))
             if name == "set_expression":
+                self._expression_set_by_function = True
                 await self._send_to_browser({
                     "type": "character_action",
                     "action_type": "expression",
@@ -428,6 +457,37 @@ class SessionManager:
             ielts_estimate=score_to_ielts(assessment.overall_score),
         )
         logger.info("score_history_saved", session_id=self.session.session_id)
+
+    def _detect_emotion(self, text: str) -> str:
+        """Detect emotion from AI speech text. Returns VRM expression name."""
+        text_lower = text.lower()
+        for emotion, patterns in _EMOTION_PATTERNS.items():
+            for pattern in patterns:
+                if re.search(pattern, text_lower, re.IGNORECASE):
+                    return emotion
+        return "neutral"
+
+    async def _on_ai_speech_text(self, text: str) -> None:
+        """Auto-set expression based on AI speech content (rule-based fallback)."""
+        if self._expression_set_by_function:
+            return
+        emotion = self._detect_emotion(text)
+        if emotion != "neutral":
+            await self._send_to_browser({
+                "type": "set_expression",
+                "expression": emotion,
+                "intensity": 0.8,
+            })
+            asyncio.create_task(self._reset_expression_after(delay=3.0))
+
+    async def _reset_expression_after(self, delay: float = 3.0) -> None:
+        """Reset expression to neutral after delay."""
+        await asyncio.sleep(delay)
+        await self._send_to_browser({
+            "type": "set_expression",
+            "expression": "neutral",
+            "intensity": 0.0,
+        })
 
     async def _delayed_stop(self, delay: float = 2.0) -> None:
         """Wait briefly for farewell audio to play, then stop session."""
