@@ -1,39 +1,51 @@
 """Linguistic metrics computation for rule-based scoring."""
 
+import json
 import re
+from functools import lru_cache
 
 import textstat
 
-# spaCy lazy loader with graceful fallback (incompatible with Python 3.14)
-_nlp = None
+
+@lru_cache(maxsize=8)
+def _analyze_text_with_llm(text: str) -> tuple[list[str], int]:
+    """Analyze grammar errors and filler count using LLM.
+
+    Returns (grammar_errors, filler_count). Falls back to regex on failure.
+    """
+    fallback_fillers = sum(1 for w in text.lower().split() if w in FILLERS)
+    try:
+        import openai  # noqa: PLC0415
+        client = openai.OpenAI(timeout=5.0)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Analyze English speech for grammar errors and filler words. "
+                        'Respond with JSON: {"grammar_errors": [...], "filler_count": N}. '
+                        "Grammar: subject-verb agreement errors (he/she/it + wrong verb). "
+                        "Fillers: um, uh, er, ah, like (non-verb use), you know, i mean, "
+                        "basically, actually, literally, sort of, kind of, well (interjection)."
+                    ),
+                },
+                {"role": "user", "content": text[:2000]},
+            ],
+            response_format={"type": "json_object"},
+            max_tokens=200,
+        )
+        data = json.loads(response.choices[0].message.content)
+        errors = [str(e) for e in data.get("grammar_errors", [])]
+        filler_count = int(data.get("filler_count", fallback_fillers))
+        return errors, filler_count
+    except Exception:
+        return [], fallback_fillers
 
 
-def _get_nlp():
-    global _nlp
-    if _nlp is None:
-        try:
-            import spacy  # noqa: PLC0415
-            _nlp = spacy.load("en_core_web_sm")
-        except Exception:
-            _nlp = None  # Model not installed or runtime incompatible, graceful fallback
-    return _nlp
-
-
-def _check_grammar_spacy(text: str) -> list[str]:
-    """Check grammar errors using spaCy dependency parsing."""
-    nlp = _get_nlp()
-    if nlp is None:
-        return []
-    errors = []
-    doc = nlp(text)
-    for token in doc:
-        # Subject-verb agreement: singular subject with plural verb
-        if token.dep_ == "nsubj" and token.head.pos_ == "VERB":
-            subj = token
-            verb = token.head
-            # "he/she/it" + present tense non-3rd-person-singular
-            if subj.text.lower() in ("he", "she", "it") and verb.tag_ == "VBP":
-                errors.append(f"Subject-verb agreement: '{subj.text} {verb.text}'")
+def _check_grammar_llm(text: str) -> list[str]:
+    """Check grammar errors using LLM with regex fallback."""
+    errors, _ = _analyze_text_with_llm(text)
     return errors
 
 
@@ -69,42 +81,15 @@ FILLERS = {
 }
 
 
-def is_filler_word(token, doc) -> bool:
-    """Context-aware filler word detection using spaCy."""
-    word = token.text.lower()
-    if word == "like":
-        # "I like dogs" → not filler (verb usage)
-        if token.pos_ == "VERB":
-            return False
-        # "would like" → not filler
-        if any(t.text.lower() == "would" for t in token.head.children):
-            return False
-        # "like a dog" → simile/preposition, not filler
-        if token.pos_ in ("ADP", "SCONJ") and token.dep_ in ("prep", "mark"):
-            return False
-        return True  # Otherwise treat as filler
-    elif word == "well":
-        # "very well" / "quite well" → not filler
-        if token.dep_ == "advmod" and token.head.pos_ == "ADJ":
-            return False
-        # At sentence start → likely filler
-        if token.i == 0 or (token.i > 0 and doc[token.i - 1].is_sent_start):
-            return True
-        return token.dep_ == "intj"
-    elif word in ("actually", "basically", "literally"):
-        return True  # These are almost always fillers in speech
-    return False
+def is_filler_word(word: str) -> bool:
+    """Check if a word is a filler word (simple set-based check)."""
+    return word.lower() in FILLERS
 
 
 def _count_fillers(text: str) -> int:
-    """Count fillers using context-aware spaCy detection with regex fallback."""
-    nlp = _get_nlp()
-    if nlp is None:
-        # Fallback: original set-based detection
-        words = text.lower().split()
-        return sum(1 for w in words if w in FILLERS)
-    doc = nlp(text)
-    return sum(1 for token in doc if is_filler_word(token, doc))
+    """Count filler words using LLM with set-based fallback."""
+    _, filler_count = _analyze_text_with_llm(text)
+    return filler_count
 
 
 def compute_fluency_metrics(
@@ -179,9 +164,9 @@ def compute_grammar_metrics(text: str) -> dict[str, float]:
         matches = re.findall(pattern, text.lower())
         error_count += len(matches)
 
-    # Combine regex errors + spaCy errors
-    spacy_errors = _check_grammar_spacy(text)
-    error_count += len(spacy_errors)
+    # Combine regex errors + LLM errors
+    llm_errors = _check_grammar_llm(text)
+    error_count += len(llm_errors)
 
     error_ratio = error_count / max(len(words), 1)
 
