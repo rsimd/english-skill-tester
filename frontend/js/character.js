@@ -289,6 +289,28 @@ function animate() {
         // --- Head idle sway ---
         updateHeadIdle(time);
 
+        // --- Body idle: spine/upperChest/shoulder gentle sway (P-VRM-003) ---
+        if (!activeGesture && vrm.humanoid) {
+            const spine = vrm.humanoid?.getNormalizedBoneNode('spine');
+            const upperChest = vrm.humanoid?.getNormalizedBoneNode('upperChest');
+            const leftShoulder = vrm.humanoid?.getNormalizedBoneNode('leftShoulder');
+            const rightShoulder = vrm.humanoid?.getNormalizedBoneNode('rightShoulder');
+
+            if (spine) {
+                spine.rotation.z = Math.sin(time * 0.3) * 0.02;
+                spine.rotation.x = Math.sin(time * 0.5) * 0.01;
+            }
+            if (upperChest) {
+                upperChest.rotation.z = Math.sin(time * 0.3 + 0.5) * 0.015;
+            }
+            if (leftShoulder) {
+                leftShoulder.rotation.z = Math.sin(time * 0.4) * 0.03;
+            }
+            if (rightShoulder) {
+                rightShoulder.rotation.z = -Math.sin(time * 0.4 + 0.3) * 0.03;
+            }
+        }
+
         // --- Lip sync ---
         updateLipSync(delta);
 
