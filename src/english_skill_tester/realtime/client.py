@@ -56,6 +56,7 @@ class RealtimeClient:
 
         # Reconnection state
         self._instructions: str | None = None
+        self._recent_utterances: list[str] = []
 
     def on(self, event_type: str, handler: EventHandler) -> None:
         """Register an event handler for a specific event type.
@@ -203,12 +204,21 @@ class RealtimeClient:
                         logger.info("session_config_resent")
 
                     # Send conversation context message to maintain continuity
-                    context_message = conversation_item_create_event(
-                        role="system",
-                        text=(
+                    if self._recent_utterances:
+                        parts = "\n".join(
+                            f"- {u[:200]}" for u in self._recent_utterances[-3:]
+                        )
+                        context_text = (
+                            f"[Reconnected. Recent AI responses:\n{parts}]"
+                        )
+                    else:
+                        context_text = (
                             "[Connection was temporarily lost and has been "
                             "restored. Continuing conversation.]"
-                        ),
+                        )
+                    context_message = conversation_item_create_event(
+                        role="system",
+                        text=context_text,
                     )
                     await self._send(context_message)
 
@@ -248,6 +258,9 @@ class RealtimeClient:
             self._current_transcript += delta
 
         if event_type == "response.audio_transcript.done":
+            if self._current_transcript:
+                self._recent_utterances.append(self._current_transcript)
+                self._recent_utterances = self._recent_utterances[-5:]
             self._current_transcript = ""
 
         # Dispatch to registered handlers
