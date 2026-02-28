@@ -24,7 +24,7 @@ class RuleBasedScorer:
     Analyzes accumulated user utterances for vocabulary, grammar, and fluency.
     """
 
-    def evaluate(
+    async def evaluate(
         self,
         text: str,
         duration_seconds: float | None = None,
@@ -52,14 +52,14 @@ class RuleBasedScorer:
         )
 
         # Grammar
-        grammar_metrics = compute_grammar_metrics(text)
+        grammar_metrics = await compute_grammar_metrics(text)
         grammar = calibrate_grammar_score(
             error_ratio=grammar_metrics["error_ratio"],
             readability=grammar_metrics["readability"],
         )
 
         # Fluency
-        fluency_metrics = compute_fluency_metrics(text, duration_seconds)
+        fluency_metrics = await compute_fluency_metrics(text, duration_seconds)
         fluency = calibrate_fluency_score(
             filler_ratio=fluency_metrics["filler_ratio"],
             words_per_minute=fluency_metrics["words_per_minute"],

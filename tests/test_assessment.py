@@ -44,40 +44,40 @@ class TestVocabularyMetrics:
 
 
 class TestFluencyMetrics:
-    def test_empty_text(self):
-        result = compute_fluency_metrics("")
+    async def test_empty_text(self):
+        result = await compute_fluency_metrics("")
         assert result["filler_ratio"] == 0.0
 
-    def test_no_fillers(self):
-        result = compute_fluency_metrics(
+    async def test_no_fillers(self):
+        result = await compute_fluency_metrics(
             "I went to the store and bought some groceries yesterday."
         )
         assert result["filler_ratio"] == 0.0
 
-    def test_with_fillers(self):
-        result = compute_fluency_metrics(
+    async def test_with_fillers(self):
+        result = await compute_fluency_metrics(
             "Um like I basically um went to um the store you know"
         )
         assert result["filler_ratio"] > 0.3
 
-    def test_wpm_calculation(self):
-        result = compute_fluency_metrics("word " * 120, duration_seconds=60)
+    async def test_wpm_calculation(self):
+        result = await compute_fluency_metrics("word " * 120, duration_seconds=60)
         assert 100 < result["words_per_minute"] < 140
 
 
 class TestGrammarMetrics:
-    def test_empty_text(self):
-        result = compute_grammar_metrics("")
+    async def test_empty_text(self):
+        result = await compute_grammar_metrics("")
         assert result["error_count"] == 0
 
-    def test_correct_grammar(self):
-        result = compute_grammar_metrics(
+    async def test_correct_grammar(self):
+        result = await compute_grammar_metrics(
             "She doesn't like to go there. He went to the park."
         )
         assert result["error_count"] == 0
 
-    def test_grammar_errors(self):
-        result = compute_grammar_metrics("He don't like it. She don't know.")
+    async def test_grammar_errors(self):
+        result = await compute_grammar_metrics("He don't like it. She don't know.")
         assert result["error_count"] >= 2
 
 
@@ -163,14 +163,14 @@ class TestComponentScores:
 
 
 class TestRuleBasedScorer:
-    def test_empty_text(self):
+    async def test_empty_text(self):
         scorer = RuleBasedScorer()
-        result = scorer.evaluate("")
+        result = await scorer.evaluate("")
         assert result.vocabulary == 50.0  # defaults
 
-    def test_real_text(self):
+    async def test_real_text(self):
         scorer = RuleBasedScorer()
-        result = scorer.evaluate(
+        result = await scorer.evaluate(
             "I think the problem is that many people don't understand "
             "the importance of environmental conservation. We should "
             "take more responsibility for our actions and consider the "

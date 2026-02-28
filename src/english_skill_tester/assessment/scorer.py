@@ -89,7 +89,7 @@ class HybridScorer:
         duration = session.duration_seconds
 
         # Always run rule-based evaluation
-        self._latest_rule_scores = self.rule_scorer.evaluate(user_text, duration)
+        self._latest_rule_scores = await self.rule_scorer.evaluate(user_text, duration)
 
         # Check if LLM evaluation should trigger
         user_count = len(session.user_utterances)

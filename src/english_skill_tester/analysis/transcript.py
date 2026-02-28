@@ -1,12 +1,13 @@
 """Transcript formatting and highlighting for post-session review."""
 
+import asyncio
 import json
 import re
 
 from english_skill_tester.assessment.metrics import FILLERS, GRAMMAR_PATTERNS
 
 
-def highlight_transcript(
+async def highlight_transcript(
     utterances: list[dict[str, str]],
 ) -> list[dict[str, object]]:
     """Add highlights to transcript utterances for review display.
@@ -25,7 +26,7 @@ def highlight_transcript(
             "highlights": [],
         }
         if u["role"] == "user":
-            entry["highlights"] = _find_highlights(u["text"])
+            entry["highlights"] = await _find_highlights(u["text"])
         result.append(entry)
     return result
 
@@ -65,7 +66,7 @@ def _analyze_grammar_llm(text: str) -> list[dict[str, str]]:
         return []
 
 
-def _find_highlights(text: str) -> list[dict[str, str]]:
+async def _find_highlights(text: str) -> list[dict[str, str]]:
     """Find notable patterns in user text.
 
     Args:
@@ -77,7 +78,7 @@ def _find_highlights(text: str) -> list[dict[str, str]]:
     highlights: list[dict[str, str]] = []
 
     # LLM-based grammar checking (with fallback on failure)
-    highlights.extend(_analyze_grammar_llm(text))
+    highlights.extend(await asyncio.to_thread(_analyze_grammar_llm, text))
 
     # Find filler words (regex-based, always runs)
     words = re.findall(r"[a-zA-Z']+", text.lower())

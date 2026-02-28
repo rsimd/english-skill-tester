@@ -1,5 +1,6 @@
 """Linguistic metrics computation for rule-based scoring."""
 
+import asyncio
 import json
 import re
 from functools import lru_cache
@@ -43,9 +44,9 @@ def _analyze_text_with_llm(text: str) -> tuple[list[str], int]:
         return [], fallback_fillers
 
 
-def _check_grammar_llm(text: str) -> list[str]:
+async def _check_grammar_llm(text: str) -> list[str]:
     """Check grammar errors using LLM with regex fallback."""
-    errors, _ = _analyze_text_with_llm(text)
+    errors, _ = await asyncio.to_thread(_analyze_text_with_llm, text)
     return errors
 
 
@@ -86,13 +87,13 @@ def is_filler_word(word: str) -> bool:
     return word.lower() in FILLERS
 
 
-def _count_fillers(text: str) -> int:
+async def _count_fillers(text: str) -> int:
     """Count filler words using LLM with set-based fallback."""
-    _, filler_count = _analyze_text_with_llm(text)
+    _, filler_count = await asyncio.to_thread(_analyze_text_with_llm, text)
     return filler_count
 
 
-def compute_fluency_metrics(
+async def compute_fluency_metrics(
     text: str, duration_seconds: float | None = None
 ) -> dict[str, float]:
     """Compute fluency-related metrics.
@@ -109,7 +110,7 @@ def compute_fluency_metrics(
         return {"filler_ratio": 0.0, "words_per_minute": 0.0, "avg_sentence_length": 0.0}
 
     # Filler ratio (context-aware detection)
-    filler_count = _count_fillers(text)
+    filler_count = await _count_fillers(text)
     filler_ratio = filler_count / len(words)
 
     # Words per minute
@@ -145,7 +146,7 @@ GRAMMAR_PATTERNS: list[tuple[str, str]] = [
 ]
 
 
-def compute_grammar_metrics(text: str) -> dict[str, float]:
+async def compute_grammar_metrics(text: str) -> dict[str, float]:
     """Compute grammar-related metrics.
 
     Args:
@@ -165,7 +166,7 @@ def compute_grammar_metrics(text: str) -> dict[str, float]:
         error_count += len(matches)
 
     # Combine regex errors + LLM errors
-    llm_errors = _check_grammar_llm(text)
+    llm_errors = await _check_grammar_llm(text)
     error_count += len(llm_errors)
 
     error_ratio = error_count / max(len(words), 1)

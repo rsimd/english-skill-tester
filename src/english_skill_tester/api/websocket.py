@@ -443,7 +443,7 @@ class SessionManager:
 
         assessment = self.scorer.latest_result
         feedback = await self.feedback_gen.generate(transcript, assessment)
-        highlighted = highlight_transcript(transcript)
+        highlighted = await highlight_transcript(transcript)
 
         # Session statistics
         session_duration = self.session.duration_seconds or 0
