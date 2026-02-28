@@ -110,10 +110,6 @@ class Settings(BaseSettings):
         return d
 
     @property
-    def prompts_dir(self) -> Path:
-        return self.project_root / "config" / "prompts"
-
-    @property
     def frontend_dir(self) -> Path:
         return self.project_root / "frontend"
 

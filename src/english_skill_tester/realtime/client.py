@@ -156,7 +156,11 @@ class RealtimeClient:
                 # Apply exponential backoff delay
                 delay = backoff_delays[reconnect_attempts]
                 if delay > 0:
-                    logger.info("realtime_reconnecting", delay_seconds=delay, attempt=reconnect_attempts + 1)
+                    logger.info(
+                        "realtime_reconnecting",
+                        delay_seconds=delay,
+                        attempt=reconnect_attempts + 1,
+                    )
                     await asyncio.sleep(delay)
 
                 # Attempt to re-establish connection
@@ -171,14 +175,20 @@ class RealtimeClient:
 
                     # Re-send session configuration
                     if self._instructions:
-                        config = session_update_event(instructions=self._instructions, tools=REALTIME_TOOLS)
+                        config = session_update_event(
+                            instructions=self._instructions,
+                            tools=REALTIME_TOOLS,
+                        )
                         await self._send(config)
                         logger.info("session_config_resent")
 
                     # Send conversation context message to maintain continuity
                     context_message = conversation_item_create_event(
                         role="system",
-                        text="[Connection was temporarily lost and has been restored. Continuing conversation.]",
+                        text=(
+                            "[Connection was temporarily lost and has been "
+                            "restored. Continuing conversation.]"
+                        ),
                     )
                     await self._send(context_message)
 
