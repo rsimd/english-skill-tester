@@ -9,6 +9,15 @@
     const ui = new UIController();
     let sessionActive = false;
 
+    function getOrCreateUserId() {
+        let userId = localStorage.getItem('english_skill_tester_user_id');
+        if (!userId) {
+            userId = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36));
+            localStorage.setItem('english_skill_tester_user_id', userId);
+        }
+        return userId;
+    }
+
     // ---- WebSocket event handlers ----
 
     ws.on('connected', () => {
@@ -48,6 +57,13 @@
 
     ws.on('score_update', (data) => {
         ui.updateScores(data);
+        if (data.cefr) {
+            const badge = document.getElementById('level-badge');
+            if (badge) {
+                const cefrLabels = {A1:'A1(初心者)', A2:'A2(初級)', B1:'B1(中級)', B2:'B2(中上級)', C1:'C1(上級)', C2:'C2(最上級)'};
+                badge.textContent = cefrLabels[data.cefr] || data.cefr;
+            }
+        }
     });
 
     ws.on('level_change', (data) => {
@@ -87,7 +103,9 @@
     ui.btnStart.addEventListener('click', () => {
         if (!sessionActive) {
             const deviceId = document.getElementById('input-device')?.value || null;
-            ws.send('start_session', { device_id: deviceId });
+            const selfReportedLevel = document.getElementById('self-reported-level')?.value || null;
+            const userId = getOrCreateUserId();
+            ws.send('start_session', { device_id: deviceId, user_id: userId, self_reported_level: selfReportedLevel || null });
             document.getElementById('loading-indicator').style.display = 'flex';
         }
     });

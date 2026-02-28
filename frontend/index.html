@@ -107,6 +107,20 @@
                     <option value="">デフォルト</option>
                 </select>
             </div>
+            <!-- レベル選択（btn-startの上あたりに追加） -->
+            <div id="level-selector" style="margin-bottom: 12px;">
+              <label for="self-reported-level" style="display:block; margin-bottom:4px; font-size:0.9em; color:#666;">
+                あなたの英語レベル:
+              </label>
+              <select id="self-reported-level" style="width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:4px; font-size:0.9em;">
+                <option value="">自動判定</option>
+                <option value="A1">A1 (初心者)</option>
+                <option value="A2">A2 (初級)</option>
+                <option value="B1">B1 (中級)</option>
+                <option value="B2">B2 (中上級)</option>
+                <option value="C1">C1 (上級)</option>
+              </select>
+            </div>
             <button id="btn-start" class="btn btn-primary">会話を開始</button>
             <button id="btn-stop" class="btn btn-danger" disabled>停止</button>
             <span id="timer" class="timer">00:00</span>
