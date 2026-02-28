@@ -61,18 +61,43 @@
                 return;
             }
 
-            list.innerHTML = sessions.map(s => `
-                <div class="session-card" onclick="loadSession('${s.session_id}')">
-                    <div class="session-card-header">
-                        <span class="session-date">${new Date(s.started_at).toLocaleString()}</span>
-                        <span class="session-level badge">${s.current_level}</span>
-                    </div>
-                    <div class="session-card-body">
-                        <span>${s.utterance_count} utterances</span>
-                        <span class="session-status">${s.status}</span>
-                    </div>
-                </div>
-            `).join('');
+            list.innerHTML = '';
+            sessions.forEach(s => {
+                const card = document.createElement('div');
+                card.className = 'session-card';
+                card.addEventListener('click', () => loadSession(s.session_id));
+
+                const header = document.createElement('div');
+                header.className = 'session-card-header';
+
+                const dateSpan = document.createElement('span');
+                dateSpan.className = 'session-date';
+                dateSpan.textContent = new Date(s.started_at).toLocaleString();
+
+                const levelSpan = document.createElement('span');
+                levelSpan.className = 'session-level badge';
+                levelSpan.textContent = s.current_level;
+
+                header.appendChild(dateSpan);
+                header.appendChild(levelSpan);
+
+                const body = document.createElement('div');
+                body.className = 'session-card-body';
+
+                const utteranceSpan = document.createElement('span');
+                utteranceSpan.textContent = s.utterance_count + ' utterances';
+
+                const statusSpan = document.createElement('span');
+                statusSpan.className = 'session-status';
+                statusSpan.textContent = s.status;
+
+                body.appendChild(utteranceSpan);
+                body.appendChild(statusSpan);
+
+                card.appendChild(header);
+                card.appendChild(body);
+                list.appendChild(card);
+            });
         }
 
         async function loadSession(sessionId) {
@@ -87,12 +112,23 @@
 
             // Render transcript
             const transcriptEl = document.getElementById('review-transcript');
-            transcriptEl.innerHTML = session.utterances.map(u => `
-                <div class="transcript-entry ${u.role}">
-                    <span class="speaker">${u.role === 'user' ? 'You' : 'AI'}:</span>
-                    <span class="text">${escapeHtml(u.text)}</span>
-                </div>
-            `).join('');
+            transcriptEl.innerHTML = '';
+            session.utterances.forEach(u => {
+                const entry = document.createElement('div');
+                entry.className = 'transcript-entry ' + (u.role === 'user' ? 'user' : 'assistant');
+
+                const speaker = document.createElement('span');
+                speaker.className = 'speaker';
+                speaker.textContent = (u.role === 'user' ? 'You' : 'AI') + ':';
+
+                const text = document.createElement('span');
+                text.className = 'text';
+                text.textContent = u.text;
+
+                entry.appendChild(speaker);
+                entry.appendChild(text);
+                transcriptEl.appendChild(entry);
+            });
 
             // Audio playback
             if (session.recording_path) {
