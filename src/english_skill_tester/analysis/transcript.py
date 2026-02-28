@@ -45,12 +45,11 @@ def _analyze_grammar_llm(text: str) -> list[dict[str, str]]:
                 {
                     "role": "system",
                     "content": (
-                        "Analyze English speech text for grammar errors. "
-                        "Detect: subject-verb agreement errors, missing articles, "
-                        "tense inconsistency, unusual word order. "
-                        'Respond with JSON: {"highlights": [{"type": "grammar", '
-                        '"word": "...", "category": "..."}, ...]}. '
-                        "Only include clear, definite errors. Keep the list short."
+                        "英語スピーチの文法エラーを分析してください。"
+                        "検出対象: 主語動詞一致エラー、冠詞の欠落、時制の不一致、不自然な語順。"
+                        'JSON形式で回答してください: {"highlights": [{"type": "grammar", '
+                        '"word": "...", "category": "..."}, ...]}。'
+                        "明確な誤りのみを含め、リストは短くしてください。"
                     ),
                 },
                 {"role": "user", "content": text[:2000]},

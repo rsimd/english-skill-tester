@@ -23,11 +23,11 @@ def _analyze_text_with_llm(text: str) -> tuple[list[str], int]:
                 {
                     "role": "system",
                     "content": (
-                        "Analyze English speech for grammar errors and filler words. "
-                        'Respond with JSON: {"grammar_errors": [...], "filler_count": N}. '
-                        "Grammar: subject-verb agreement errors (he/she/it + wrong verb). "
-                        "Fillers: um, uh, er, ah, like (non-verb use), you know, i mean, "
-                        "basically, actually, literally, sort of, kind of, well (interjection)."
+                        "英語スピーチの文法エラーとフィラー語を分析してください。"
+                        'JSON形式で回答してください: {"grammar_errors": [...], "filler_count": N}。'
+                        "文法エラー: 主語動詞一致エラー（he/she/it + 誤った動詞形）。"
+                        "フィラー語: um, uh, er, ah, like（動詞以外の用法）, you know, i mean, "
+                        "basically, actually, literally, sort of, kind of, well（間投詞）。"
                     ),
                 },
                 {"role": "user", "content": text[:2000]},
