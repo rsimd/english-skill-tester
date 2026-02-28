@@ -54,11 +54,20 @@
             sessionActive = true;
             ui.setSessionActive(true);
             startSessionTimer();
+            document.getElementById('force-stop-btn').style.display = 'block';
         } else if (data.status === 'completed') {
             sessionActive = false;
             ui.setSessionActive(false);
             stopSessionTimer();
+            document.getElementById('force-stop-btn').style.display = 'none';
         }
+    });
+
+    ws.on('session_end', () => {
+        sessionActive = false;
+        ui.setSessionActive(false);
+        stopSessionTimer();
+        document.getElementById('force-stop-btn').style.display = 'none';
     });
 
     ws.on('transcript', (data) => {
@@ -114,6 +123,14 @@
             ws.send('stop_session');
         }
     });
+
+    // ---- Force stop ----
+
+    function forceStopSession() {
+        ws.send('force_stop');
+        document.getElementById('force-stop-btn').style.display = 'none';
+    }
+    document.getElementById('force-stop-btn').addEventListener('click', forceStopSession);
 
     // ---- Model switching ----
 
