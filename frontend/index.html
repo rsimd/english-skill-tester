@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,7 +14,7 @@
             <h1>English Skill Tester</h1>
             <div id="connection-status" class="status-indicator disconnected">
                 <span class="dot"></span>
-                <span class="label">Disconnected</span>
+                <span class="label">未接続</span>
             </div>
         </header>
 
@@ -51,35 +51,35 @@
                 </div>
                 <div class="score-bars">
                     <div class="score-bar-item">
-                        <label>Vocabulary</label>
+                        <label>語彙力</label>
                         <div class="bar-container">
                             <div class="bar" id="bar-vocabulary" style="width: 50%"></div>
                         </div>
                         <span class="bar-value" id="val-vocabulary">50</span>
                     </div>
                     <div class="score-bar-item">
-                        <label>Grammar</label>
+                        <label>文法力</label>
                         <div class="bar-container">
                             <div class="bar" id="bar-grammar" style="width: 50%"></div>
                         </div>
                         <span class="bar-value" id="val-grammar">50</span>
                     </div>
                     <div class="score-bar-item">
-                        <label>Fluency</label>
+                        <label>流暢性</label>
                         <div class="bar-container">
                             <div class="bar" id="bar-fluency" style="width: 50%"></div>
                         </div>
                         <span class="bar-value" id="val-fluency">50</span>
                     </div>
                     <div class="score-bar-item">
-                        <label>Comprehension</label>
+                        <label>理解力</label>
                         <div class="bar-container">
                             <div class="bar" id="bar-comprehension" style="width: 50%"></div>
                         </div>
                         <span class="bar-value" id="val-comprehension">50</span>
                     </div>
                     <div class="score-bar-item">
-                        <label>Coherence</label>
+                        <label>一貫性</label>
                         <div class="bar-container">
                             <div class="bar" id="bar-coherence" style="width: 50%"></div>
                         </div>
@@ -90,7 +90,7 @@
 
             <!-- Transcript -->
             <div id="transcript-panel">
-                <h2>Conversation</h2>
+                <h2>会話記録</h2>
                 <div id="transcript" class="transcript-area"></div>
             </div>
         </main>
@@ -107,14 +107,12 @@
                     <option value="">デフォルト</option>
                 </select>
             </div>
-            <button id="btn-start" class="btn btn-primary">Start Conversation</button>
-            <button id="btn-stop" class="btn btn-danger" disabled>Stop</button>
+            <button id="btn-start" class="btn btn-primary">会話を開始</button>
+            <button id="btn-stop" class="btn btn-danger" disabled>停止</button>
             <span id="timer" class="timer">00:00</span>
-            <!-- Session Timer -->
-            <div id="session-timer" style="display:none; font-family:monospace; font-size:20px;
-                 font-weight:bold; color:#333; text-align:center; padding:4px 12px;
-                 background:#f0f0f0; border-radius:6px;">
-              ⏱ <span id="timer-display">00:00</span>
+            <div id="loading-indicator" style="display:none; align-items:center; gap:8px; font-size:14px; color:#555;">
+                <div class="spinner"></div>
+                <span>接続中...</span>
             </div>
         </footer>
 

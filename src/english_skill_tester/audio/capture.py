@@ -99,6 +99,12 @@ class AudioCapture:
             self._stream.stop()
             self._stream.close()
             self._stream = None
+        # Drain remaining items from asyncio queue
+        while not self._asyncio_queue.empty():
+            try:
+                self._asyncio_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
         logger.info("audio_capture_stopped")
 
     async def chunks(self) -> AsyncIterator[np.ndarray]:

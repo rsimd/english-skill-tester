@@ -1,48 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Review - English Skill Tester</title>
+    <title>セッションレビュー - English Skill Tester</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
     <div id="review-app">
         <header>
-            <h1>Session Review</h1>
-            <a href="/" class="btn btn-secondary">Back to Home</a>
+            <h1>セッションレビュー</h1>
+            <a href="/" class="btn btn-secondary">ホームへ戻る</a>
         </header>
 
         <main>
             <!-- Session selector -->
             <div id="session-selector">
-                <h2>Past Sessions</h2>
+                <h2>過去のセッション</h2>
                 <div id="session-list" class="session-list">
-                    <p class="loading">Loading sessions...</p>
+                    <p class="loading">セッション読み込み中...</p>
                 </div>
             </div>
 
             <!-- Session detail -->
             <div id="session-detail" class="hidden">
                 <div class="review-header">
-                    <h2>Session: <span id="review-session-id"></span></h2>
+                    <h2>セッション: <span id="review-session-id"></span></h2>
                     <div class="review-meta">
-                        <span>Date: <strong id="review-date"></strong></span>
-                        <span>Level: <strong id="review-level"></strong></span>
-                        <span>Utterances: <strong id="review-utterance-count"></strong></span>
+                        <span>日付: <strong id="review-date"></strong></span>
+                        <span>レベル: <strong id="review-level"></strong></span>
+                        <span>発話数: <strong id="review-utterance-count"></strong></span>
                     </div>
                 </div>
 
                 <!-- Transcript with highlights -->
                 <div class="review-section">
-                    <h3>Transcript</h3>
+                    <h3>会話記録</h3>
                     <div id="review-transcript" class="transcript-area"></div>
                 </div>
 
                 <!-- Recordings -->
                 <div class="review-section" id="review-recordings-section">
-                    <h3>Recording</h3>
+                    <h3>録音</h3>
                     <audio id="review-audio" controls></audio>
                 </div>
             </div>
@@ -57,7 +57,7 @@
             const list = document.getElementById('session-list');
 
             if (sessions.length === 0) {
-                list.innerHTML = '<p>No sessions found. Complete a conversation first.</p>';
+                list.innerHTML = '<p>セッションが見つかりません。まず会話を完了してください。</p>';
                 return;
             }
 
@@ -85,7 +85,7 @@
                 body.className = 'session-card-body';
 
                 const utteranceSpan = document.createElement('span');
-                utteranceSpan.textContent = s.utterance_count + ' utterances';
+                utteranceSpan.textContent = s.utterance_count + ' 件の発話';
 
                 const statusSpan = document.createElement('span');
                 statusSpan.className = 'session-status';
@@ -119,7 +119,7 @@
 
                 const speaker = document.createElement('span');
                 speaker.className = 'speaker';
-                speaker.textContent = (u.role === 'user' ? 'You' : 'AI') + ':';
+                speaker.textContent = (u.role === 'user' ? 'あなた' : 'AI') + ':';
 
                 const text = document.createElement('span');
                 text.className = 'text';

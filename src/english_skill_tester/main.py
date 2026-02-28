@@ -2,6 +2,8 @@
 
 import logging
 import os
+import time
+from collections import defaultdict
 
 import structlog
 import uvicorn
@@ -13,6 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from english_skill_tester.api.routes import router
 from english_skill_tester.api.websocket import handle_browser_websocket
 from english_skill_tester.config import Settings
+
+# Simple in-memory rate limiter for WebSocket (slowapi does not support WS natively)
+_ws_connection_times: dict[str, list[float]] = defaultdict(list)
+_WS_RATE_LIMIT = 10  # max WS connections per IP per window
+_WS_RATE_WINDOW = 60  # seconds
 
 # Configure structlog based on environment
 is_production = os.getenv("ENV", "development").lower() == "production"
@@ -82,7 +89,15 @@ async def auth_middleware(request: Request, call_next):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    """Browser WebSocket endpoint."""
+    """Browser WebSocket endpoint with per-IP rate limiting."""
+    client_ip = websocket.client.host if websocket.client else "unknown"
+    now = time.time()
+    times = _ws_connection_times[client_ip]
+    times[:] = [t for t in times if now - t < _WS_RATE_WINDOW]
+    if len(times) >= _WS_RATE_LIMIT:
+        await websocket.close(code=1008, reason="Rate limit exceeded")
+        return
+    times.append(now)
     await handle_browser_websocket(websocket, settings)
 
 
