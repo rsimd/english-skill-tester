@@ -7,8 +7,10 @@ from functools import lru_cache
 
 import textstat
 
+from english_skill_tester.config import get_settings
 
-@lru_cache(maxsize=8)
+
+@lru_cache(maxsize=8)  # noqa: L007 — full text key; low hit rate for long inputs (acceptable)
 def _analyze_text_with_llm(text: str) -> tuple[list[str], int]:
     """Analyze grammar errors and filler count using LLM.
 
@@ -19,7 +21,7 @@ def _analyze_text_with_llm(text: str) -> tuple[list[str], int]:
         import openai  # noqa: PLC0415
         client = openai.OpenAI(timeout=5.0)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=get_settings().evaluation_model,
             messages=[
                 {
                     "role": "system",
@@ -213,35 +215,33 @@ BASIC_WORDS: frozenset[str] = frozenset({
     "win", "offer", "remember", "love", "consider", "appear", "buy", "wait",
     "serve", "die", "send", "expect", "build", "stay", "fall", "cut", "reach",
     "kill", "remain", "suggest", "raise", "pass", "sell", "require", "report",
-    "decide", "pull", "feel", "talk", "next", "keep", "let", "put", "mean",
-    "call", "try", "ask", "need", "leave", "seem", "start", "show", "hear",
-    "play", "turn", "place", "find", "tell", "given", "end", "long", "down",
-    "own", "old", "right", "big", "high", "different", "little", "last",
-    "few", "much", "many", "great", "other", "old", "right", "right",
-    "still", "own", "same", "another", "each", "both", "between", "own",
+    "decide", "pull", "feel", "talk", "keep", "let", "put", "mean",
+    "call", "try", "ask", "leave", "seem", "start", "show", "hear",
+    "turn", "find", "tell", "given", "end", "long", "down",
+    "own", "old", "big", "high", "different", "little", "last",
+    "much", "many", "great", "still", "another", "each", "both", "between",
     "through", "during", "before", "never", "always", "around", "something",
     "nothing", "everything", "everyone", "someone", "anyone", "nobody",
     "almost", "often", "together", "sometimes", "however", "though",
     "without", "again", "ago", "yet", "since", "while", "under", "along",
     "near", "below", "above", "across", "behind", "within", "against",
-    "upon", "inside", "outside", "around", "until", "toward", "between",
-    "front", "back", "left", "right", "top", "bottom", "far", "away",
-    "maybe", "perhaps", "definitely", "probably", "already", "soon", "later",
-    "once", "twice", "enough", "either", "neither", "both", "each",
+    "upon", "inside", "outside", "until", "toward",
+    "front", "left", "top", "bottom", "far", "away",
+    "maybe", "perhaps", "definitely", "probably", "soon", "later",
+    "once", "twice", "enough", "either", "neither",
     "whose", "where", "why", "whether", "whenever", "whatever", "whoever",
-    "although", "because", "since", "unless", "until", "while", "after",
-    "before", "if", "when", "than", "that", "as", "so", "but", "and",
+    "although", "unless",
     "door", "window", "floor", "wall", "table", "chair", "bed", "light",
     "road", "street", "town", "country", "land", "sea", "river", "field",
     "tree", "flower", "fire", "sun", "moon", "star", "sky", "rain", "snow",
     "dog", "cat", "bird", "fish", "horse", "cow", "pig", "sheep", "bear",
     "red", "blue", "green", "yellow", "brown", "grey", "orange", "purple",
     "hot", "cold", "warm", "cool", "dry", "wet", "hard", "soft", "heavy",
-    "light", "fast", "slow", "quiet", "loud", "clean", "dirty", "open",
+    "fast", "slow", "quiet", "loud", "clean", "dirty",
     "close", "full", "empty", "strong", "weak", "safe", "happy", "sad",
     "angry", "afraid", "ready", "true", "false", "possible", "likely",
     "easy", "difficult", "simple", "complex", "clear", "dark", "deep",
-    "long", "short", "wide", "narrow", "round", "flat", "straight", "sharp",
+    "short", "wide", "narrow", "round", "flat", "straight", "sharp",
 })
 
 # Tier 2: 頻出1001-3000語（中級語彙）— BNC/COCA準拠

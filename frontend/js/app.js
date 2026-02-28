@@ -9,31 +9,6 @@
     const ui = new UIController();
     let sessionActive = false;
 
-    // ---- Session Timer ----
-
-    let timerInterval = null;
-    let sessionStartTime = null;
-
-    function startSessionTimer() {
-        sessionStartTime = Date.now();
-        document.getElementById('session-timer').style.display = 'inline-block';
-        timerInterval = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - sessionStartTime) / 1000);
-            const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
-            const ss = String(elapsed % 60).padStart(2, '0');
-            document.getElementById('timer-display').textContent = `${mm}:${ss}`;
-        }, 1000);
-    }
-
-    function stopSessionTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        document.getElementById('session-timer').style.display = 'none';
-        document.getElementById('timer-display').textContent = '00:00';
-    }
-
     // ---- WebSocket event handlers ----
 
     ws.on('connected', () => {
@@ -45,7 +20,6 @@
         if (sessionActive) {
             sessionActive = false;
             ui.setSessionActive(false);
-            stopSessionTimer();
         }
     });
 
@@ -53,12 +27,11 @@
         if (data.status === 'active') {
             sessionActive = true;
             ui.setSessionActive(true);
-            startSessionTimer();
             document.getElementById('force-stop-btn').style.display = 'block';
+            document.getElementById('loading-indicator').style.display = 'none';
         } else if (data.status === 'completed') {
             sessionActive = false;
             ui.setSessionActive(false);
-            stopSessionTimer();
             document.getElementById('force-stop-btn').style.display = 'none';
         }
     });
@@ -66,7 +39,6 @@
     ws.on('session_end', () => {
         sessionActive = false;
         ui.setSessionActive(false);
-        stopSessionTimer();
         document.getElementById('force-stop-btn').style.display = 'none';
     });
 
@@ -114,7 +86,9 @@
 
     ui.btnStart.addEventListener('click', () => {
         if (!sessionActive) {
-            ws.send('start_session');
+            const deviceId = document.getElementById('input-device')?.value || null;
+            ws.send('start_session', { device_id: deviceId });
+            document.getElementById('loading-indicator').style.display = 'flex';
         }
     });
 

@@ -5,6 +5,7 @@ import json
 import re
 
 from english_skill_tester.assessment.metrics import FILLERS, GRAMMAR_PATTERNS
+from english_skill_tester.config import get_settings
 
 
 async def highlight_transcript(
@@ -41,7 +42,7 @@ def _analyze_grammar_llm(text: str) -> list[dict[str, str]]:
 
         client = openai.OpenAI(timeout=5.0)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=get_settings().evaluation_model,
             messages=[
                 {
                     "role": "system",

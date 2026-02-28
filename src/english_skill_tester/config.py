@@ -165,13 +165,3 @@ def load_persona(persona_name: str = "default") -> dict:
     with open(persona_path, encoding='utf-8') as f:
         data = yaml.safe_load(f)
     return data.get('persona', {})
-
-
-def load_level_prompts() -> dict:
-    """Load level-specific prompts from YAML file."""
-    prompts_path = _find_project_root() / "config" / "prompts" / "levels.yaml"
-    if not prompts_path.exists():
-        raise FileNotFoundError(f"Prompts file not found: {prompts_path}")
-    with open(prompts_path, encoding='utf-8') as f:
-        data = yaml.safe_load(f)
-    return data.get('levels', {})
