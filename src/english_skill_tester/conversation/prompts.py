@@ -117,3 +117,34 @@ def build_system_prompt(level: str, context: str = "") -> str:
     base = BASE_PROMPT.format(context=context or "General conversation practice session.")
     level_instructions = LEVEL_PROMPTS.get(level, LEVEL_PROMPTS["intermediate"])
     return f"{base}\n\n{level_instructions}"
+
+
+# CEFR level mapping from legacy SkillLevel names
+_SKILL_LEVEL_TO_CEFR: dict[str, str] = {
+    "beginner": "A1",
+    "elementary": "A2",
+    "intermediate": "B1",
+    "upper_intermediate": "B2",
+    "advanced": "C1",
+}
+
+
+def get_system_prompt(level: str, context: str = "") -> str:
+    """Build system prompt integrating PromptEngine for CEFR-aware prompts.
+
+    Args:
+        level: Skill level key (legacy name or CEFR code A1-C2).
+        context: Additional conversation context.
+
+    Returns:
+        Complete system prompt string.
+    """
+    from english_skill_tester.conversation.prompt_engine import get_prompt_engine
+
+    cefr = _SKILL_LEVEL_TO_CEFR.get(level, level)
+    engine = get_prompt_engine()
+    cefr_prompt = engine.build_prompt(cefr=cefr)
+    base = BASE_PROMPT.format(context=context or "General conversation practice session.")
+    if cefr_prompt:
+        return f"{base}\n\n{cefr_prompt}"
+    return build_system_prompt(level, context)
