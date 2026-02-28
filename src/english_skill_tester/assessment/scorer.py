@@ -43,6 +43,7 @@ class HybridScorer:
         self._latest_rule_scores = ComponentScores()
         self._latest_llm_scores = ComponentScores()
         self._llm_scores_lock = asyncio.Lock()
+        self._llm_task: asyncio.Task | None = None
         self._history: list[AssessmentResult] = []
 
     @property
@@ -108,10 +109,16 @@ class HybridScorer:
                 if u.text
             ]
             # Spawn LLM evaluation as background task (non-blocking)
-            asyncio.create_task(self._background_llm_eval(transcript, user_count))
-            self._last_llm_eval_time = now
-            self._last_llm_eval_count = user_count
-            logger.info("llm_evaluation_triggered", utterance_count=user_count)
+            # Skip if previous task is still running to avoid double-scheduling
+            if self._llm_task is None or self._llm_task.done():
+                self._llm_task = asyncio.create_task(
+                    self._background_llm_eval(transcript, user_count)
+                )
+                self._last_llm_eval_time = now
+                self._last_llm_eval_count = user_count
+                logger.info("llm_evaluation_triggered", utterance_count=user_count)
+            else:
+                logger.debug("llm_evaluation_skipped_busy")
 
         # Merge: rule-based for vocab/grammar/fluency, LLM for comprehension/coherence
         # Read LLM scores with lock protection
