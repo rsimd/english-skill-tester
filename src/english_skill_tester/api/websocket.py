@@ -16,6 +16,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from english_skill_tester.analysis.feedback import FeedbackGenerator
 from english_skill_tester.analysis.transcript import highlight_transcript
 from english_skill_tester.assessment.calibration import get_full_mapping
+from english_skill_tester.assessment.metrics import FILLERS
 from english_skill_tester.assessment.scorer import HybridScorer
 from english_skill_tester.audio.capture import AudioCapture
 from english_skill_tester.audio.encoder import base64_to_pcm16, pcm16_to_base64
@@ -444,6 +445,15 @@ class SessionManager:
         feedback = await self.feedback_gen.generate(transcript, assessment)
         highlighted = highlight_transcript(transcript)
 
+        # Session statistics
+        session_duration = self.session.duration_seconds or 0
+        user_utterances = self.session.user_utterances
+        user_text = self.session.user_text_joined
+        words = re.findall(r"[a-zA-Z']+", user_text.lower())
+        filler_count = sum(1 for w in words if w in FILLERS)
+        filler_rate = round(filler_count / max(len(words), 1) * 100, 1)
+
+        scores = assessment.components
         await self._send_to_browser({
             "type": "feedback",
             "summary": feedback.get("summary", ""),
@@ -457,6 +467,17 @@ class SessionManager:
             "toeic_estimate": score_to_toeic(assessment.overall_score),
             "ielts_estimate": score_to_ielts(assessment.overall_score),
             "transcript": highlighted,
+            # Component scores
+            "vocabulary": scores.vocabulary,
+            "grammar": scores.grammar,
+            "fluency": scores.fluency,
+            "comprehension": scores.comprehension,
+            "coherence": scores.coherence,
+            "pronunciation_proxy": scores.pronunciation_proxy,
+            # Session statistics
+            "session_duration": round(session_duration),
+            "utterance_count": len(user_utterances),
+            "filler_rate": filler_rate,
         })
 
     async def _save_session(self) -> None:
