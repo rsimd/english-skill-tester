@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     realtime_model: str = Field(default="gpt-4o-realtime-preview-2024-12-17")
     evaluation_model: str = Field(default="gpt-4o-mini")
 
+    # Authentication (optional: None disables auth)
+    app_secret: str | None = Field(default=None)
+
     # Audio
     audio_sample_rate: int = Field(default=24000)
     audio_channels: int = Field(default=1)

@@ -101,14 +101,15 @@ class SessionManager:
         self.browser_ws = browser_ws
         self.session = Session(session_id=str(uuid.uuid4()))
         self.strategy = ConversationStrategy()
+        api_key = settings.openai_api_key  # centralized reference (P-SEC-001)
         self.scorer = HybridScorer(
-            api_key=settings.openai_api_key,
+            api_key=api_key,
             eval_model=settings.evaluation_model,
             llm_interval_utterances=settings.llm_eval_interval_utterances,
             llm_interval_seconds=settings.llm_eval_interval_seconds,
         )
         self.feedback_gen = FeedbackGenerator(
-            api_key=settings.openai_api_key,
+            api_key=api_key,
             model=settings.evaluation_model,
         )
         self.capture = AudioCapture(
@@ -128,7 +129,7 @@ class SessionManager:
             sample_rate=settings.audio_sample_rate,
         )
         self.realtime = RealtimeClient(
-            api_key=settings.openai_api_key,
+            api_key=api_key,
             model=settings.realtime_model,
         )
         self._tasks: list[asyncio.Task] = []

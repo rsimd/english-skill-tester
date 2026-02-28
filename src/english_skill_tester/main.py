@@ -5,8 +5,9 @@ import os
 
 import structlog
 import uvicorn
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from english_skill_tester.api.routes import router
@@ -56,6 +57,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router)
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Optional APP_SECRET authentication middleware (P-SEC-002)."""
+    if not settings.app_secret:
+        return await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static"):
+        return await call_next(request)
+    secret = request.headers.get("X-App-Secret", "")
+    if request.url.path == "/ws":
+        qs_secret = request.query_params.get("secret", "")
+        if secret != settings.app_secret and qs_secret != settings.app_secret:
+            return JSONResponse({"error": "Unauthorized"}, status_code=401)
+        return await call_next(request)
+    if secret != settings.app_secret:
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    return await call_next(request)
 
 
 @app.websocket("/ws")
