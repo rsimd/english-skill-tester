@@ -27,34 +27,53 @@ class AudioRecorder:
         self.output_dir = output_dir
         self.sample_rate = sample_rate
         self.channels = channels
-        self._input_chunks: list[np.ndarray] = []
-        self._output_chunks: list[np.ndarray] = []
+        self._input_file: wave.Wave_write | None = None
+        self._output_file: wave.Wave_write | None = None
+        self._input_temp_path: Path | None = None
+        self._output_temp_path: Path | None = None
         self._recording = False
 
     def start(self) -> None:
-        """Start recording."""
-        self._input_chunks.clear()
-        self._output_chunks.clear()
+        """Start recording — opens temporary WAV files for streaming write."""
         self._recording = True
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self._input_temp_path = self.output_dir / "_rec_input.tmp.wav"
+        self._output_temp_path = self.output_dir / "_rec_output.tmp.wav"
+        self._input_file = wave.open(str(self._input_temp_path), "wb")
+        self._input_file.setnchannels(self.channels)
+        self._input_file.setsampwidth(2)  # 16-bit
+        self._input_file.setframerate(self.sample_rate)
+        self._output_file = wave.open(str(self._output_temp_path), "wb")
+        self._output_file.setnchannels(self.channels)
+        self._output_file.setsampwidth(2)
+        self._output_file.setframerate(self.sample_rate)
         logger.info("recorder_started")
 
     def stop(self) -> None:
-        """Stop recording."""
+        """Stop recording and finalize WAV files."""
         self._recording = False
+        if self._input_file:
+            self._input_file.close()
+            self._input_file = None
+        if self._output_file:
+            self._output_file.close()
+            self._output_file = None
         logger.info("recorder_stopped")
 
     def record_input(self, audio: np.ndarray) -> None:
-        """Record an input (user microphone) audio chunk."""
-        if self._recording:
-            self._input_chunks.append(audio.copy())
+        """Record input audio chunk directly to disk."""
+        if self._recording and self._input_file:
+            pcm16 = (audio * 32767).astype(np.int16)
+            self._input_file.writeframes(pcm16.tobytes())
 
     def record_output(self, audio: np.ndarray) -> None:
-        """Record an output (AI speaker) audio chunk."""
-        if self._recording:
-            self._output_chunks.append(audio.copy())
+        """Record output audio chunk directly to disk."""
+        if self._recording and self._output_file:
+            pcm16 = (audio * 32767).astype(np.int16)
+            self._output_file.writeframes(pcm16.tobytes())
 
     def save(self, session_id: str) -> dict[str, Path]:
-        """Save recorded audio to WAV files.
+        """Rename temp files to session-named files and generate mixed track.
 
         Args:
             session_id: Session identifier for file naming.
@@ -63,30 +82,40 @@ class AudioRecorder:
             Dict with paths to saved files.
         """
         paths: dict[str, Path] = {}
-        self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        for label, chunks in [("input", self._input_chunks), ("output", self._output_chunks)]:
-            if not chunks:
-                continue
-            audio = np.concatenate(chunks)
-            path = self.output_dir / f"{session_id}_{label}.wav"
-            self._write_wav(path, audio)
-            paths[label] = path
-            logger.info("recording_saved", path=str(path), duration_s=len(audio) / self.sample_rate)
+        if self._input_temp_path and self._input_temp_path.exists():
+            dest = self.output_dir / f"{session_id}_input.wav"
+            self._input_temp_path.rename(dest)
+            paths["input"] = dest
+            logger.info("recording_saved", path=str(dest))
 
-        # Also save mixed version
-        if self._input_chunks and self._output_chunks:
-            input_audio = np.concatenate(self._input_chunks)
-            output_audio = np.concatenate(self._output_chunks)
+        if self._output_temp_path and self._output_temp_path.exists():
+            dest = self.output_dir / f"{session_id}_output.wav"
+            self._output_temp_path.rename(dest)
+            paths["output"] = dest
+            logger.info("recording_saved", path=str(dest))
+
+        if "input" in paths and "output" in paths:
+            input_audio = self._read_wav(paths["input"])
+            output_audio = self._read_wav(paths["output"])
             max_len = max(len(input_audio), len(output_audio))
             input_padded = np.pad(input_audio, (0, max_len - len(input_audio)))
             output_padded = np.pad(output_audio, (0, max_len - len(output_audio)))
-            mixed = (input_padded + output_padded) / 2.0
-            path = self.output_dir / f"{session_id}_mixed.wav"
-            self._write_wav(path, mixed)
-            paths["mixed"] = path
+            mixed = (
+                input_padded.astype(np.float32) / 32767.0
+                + output_padded.astype(np.float32) / 32767.0
+            ) / 2.0
+            mixed_path = self.output_dir / f"{session_id}_mixed.wav"
+            self._write_wav(mixed_path, mixed)
+            paths["mixed"] = mixed_path
 
         return paths
+
+    def _read_wav(self, path: Path) -> np.ndarray:
+        """Read WAV file to int16 numpy array."""
+        with wave.open(str(path), "rb") as wf:
+            frames = wf.readframes(wf.getnframes())
+            return np.frombuffer(frames, dtype=np.int16)
 
     def _write_wav(self, path: Path, audio: np.ndarray) -> None:
         """Write audio array to WAV file."""
