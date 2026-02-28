@@ -1,0 +1,149 @@
+# Topics and role-play scenarios per CEFR level
+# C-001: Level-based topic pools
+# C-005: Role-play scenarios
+
+# C-001: レベル別トピックプール
+topics:
+  A1:
+    - "Self-introduction (name, age, country)"
+    - "Family members"
+    - "Favorite foods and drinks"
+    - "Colors and numbers"
+    - "Daily routine (wake up, eat, sleep)"
+    - "Animals you like"
+    - "Weather today"
+    - "Simple shopping (buying one item)"
+    - "Your home (rooms)"
+    - "Hobbies you have"
+
+  A2:
+    - "Weekend activities"
+    - "Describing your hometown"
+    - "School or work basics"
+    - "Favorite movies or TV shows"
+    - "Past holiday or trip"
+    - "Health and body (feeling sick)"
+    - "Transportation (bus, train)"
+    - "Shopping for clothes"
+    - "Making plans with a friend"
+    - "Describing a person's appearance"
+    - "Food preferences and restaurants"
+    - "Simple directions"
+
+  B1:
+    - "Travel experiences and dream destinations"
+    - "Work and career goals"
+    - "Technology in daily life"
+    - "Cultural differences between Japan and other countries"
+    - "Environmental issues (simple)"
+    - "Sports and fitness"
+    - "Music and entertainment"
+    - "Education system comparison"
+    - "Social media habits"
+    - "Cooking and recipes"
+    - "Future plans and ambitions"
+    - "Books and reading habits"
+    - "City vs. countryside living"
+
+  B2:
+    - "Global environmental challenges"
+    - "Work-life balance and burnout"
+    - "Impact of social media on society"
+    - "Remote work trends"
+    - "Gender equality and diversity"
+    - "Mental health awareness"
+    - "Economic inequality"
+    - "Traditional vs. modern values in Japan"
+    - "Role of AI in modern life"
+    - "Travel and cultural exchange"
+    - "Education reform"
+    - "Consumer culture and minimalism"
+
+  C1:
+    - "Political systems and democracy"
+    - "Philosophy of happiness and well-being"
+    - "Ethics of artificial intelligence"
+    - "Climate change policy debate"
+    - "Economic globalization advantages and disadvantages"
+    - "Media bias and critical thinking"
+    - "Immigration and multiculturalism"
+    - "Future of work in an automated world"
+    - "Healthcare system design"
+    - "Academic freedom and censorship"
+    - "National identity and globalization tension"
+
+  C2:
+    - "Epistemology: how do we know what we know?"
+    - "Post-structuralism and language"
+    - "Comparative political philosophy"
+    - "The ethics of gene editing"
+    - "Consciousness and artificial sentience"
+    - "Economic theories and their real-world applications"
+    - "Literary criticism and postmodernism"
+    - "International relations and power dynamics"
+
+# C-005: ロールプレイシナリオ
+scenarios:
+  restaurant_order:
+    level: "A1-A2"
+    title: "レストランで注文する / Ordering at a restaurant"
+    setup: |
+      Role-play scenario: You are a customer at a restaurant in an English-speaking country.
+      I (AI) will play the server. You need to:
+      1. Get a table
+      2. Look at the menu and order food and drinks
+      3. Handle any questions from the server
+      4. Ask for the bill
+      Start by saying you want a table.
+
+  hotel_checkin:
+    level: "A2-B1"
+    title: "ホテルでチェックイン / Hotel check-in"
+    setup: |
+      Role-play scenario: You are checking into a hotel in the UK.
+      I (AI) will play the hotel receptionist. You need to:
+      1. Confirm your reservation
+      2. Provide your details
+      3. Ask about amenities (Wi-Fi, breakfast, gym)
+      4. Handle any issues (room upgrade, late check-out)
+      Start by approaching the front desk.
+
+  job_interview:
+    level: "B1-B2"
+    title: "就職面接 / Job interview"
+    setup: |
+      Role-play scenario: You are being interviewed for a position at an international company.
+      I (AI) will play the interviewer. You need to:
+      1. Introduce yourself professionally
+      2. Answer questions about your experience and skills
+      3. Ask thoughtful questions about the role
+      4. Handle challenging questions (weaknesses, salary expectations)
+      Start by greeting the interviewer.
+
+  business_negotiation:
+    level: "B2-C1"
+    title: "ビジネス交渉 / Business negotiation"
+    setup: |
+      Role-play scenario: You are negotiating a contract with a foreign business partner.
+      I (AI) will play the business partner. You need to:
+      1. Present your company's proposal
+      2. Negotiate terms (price, timeline, conditions)
+      3. Handle objections diplomatically
+      4. Reach a compromise and close the deal
+      Start by opening the meeting.
+
+  debate:
+    level: "C1-C2"
+    title: "ディベート / Debate"
+    setup: |
+      Role-play scenario: We will have a formal debate on a controversial topic.
+      I (AI) will take the opposing position to you.
+      We will argue for 10 minutes, then switch sides.
+      Topic: "Social media does more harm than good."
+      Which side would you like to argue first?
+
+# Prompt additions for PromptEngine integration
+topic_prompt_template: |
+  For today's session, suggested topics for a {cefr} level learner:
+  {topic_list}
+  Choose one of these topics to discuss, or ask the learner what they'd like to talk about.
