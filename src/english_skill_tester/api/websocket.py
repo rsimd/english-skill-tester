@@ -525,6 +525,15 @@ async def handle_browser_websocket(
                     await session_mgr.stop()
                     session_mgr = None
 
+            elif msg_type == "force_stop":
+                if session_mgr:
+                    logger.info("force_stop_requested")
+                    await session_mgr._send_to_browser({
+                        "type": "session_end",
+                        "reason": "force_stop",
+                    })
+                    asyncio.create_task(session_mgr._delayed_stop(delay=0.5))
+
     except WebSocketDisconnect:
         logger.info("browser_disconnected")
     except Exception:
