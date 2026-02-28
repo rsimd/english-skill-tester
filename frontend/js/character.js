@@ -16,6 +16,11 @@ let targetAudioLevel = 0;
 let currentExpression = 'neutral';
 let aiSpeaking = false;
 
+// P-VRM-001: Smooth expression transition state (lerp)
+const EMOTION_PRESETS = ['happy', 'angry', 'sad', 'surprised', 'relaxed'];
+let expressionTargets = {};  // target weights for emotion presets
+let expressionCurrent = {};  // current interpolated weights
+
 // Blink state
 let blinkTimer = 0;
 let blinkInterval = 3.0; // seconds between blinks
@@ -90,6 +95,12 @@ async function initCharacter() {
             canvas.style.display = 'block';
             fallback.style.display = 'none';
             initialized = true;
+
+            // P-VRM-001: Initialize expression lerp state after VRM load
+            EMOTION_PRESETS.forEach(preset => {
+                expressionTargets[preset] = 0;
+                expressionCurrent[preset] = 0;
+            });
 
             // Log available expressions for debugging
             if (vrm.expressionManager) {
@@ -239,6 +250,11 @@ async function loadModel(source) {
                     scene.add(vrm.scene);
                     vrm.scene.rotation.y = Math.PI;
                     disableExpressionOverrides(); // Phase 1 の修正を新モデルにも適用
+                    // P-VRM-001: Reset expression lerp state for new model
+                    EMOTION_PRESETS.forEach(preset => {
+                        expressionTargets[preset] = 0;
+                        expressionCurrent[preset] = 0;
+                    });
                     initialized = true;
                     if (!wasAnimating) animate(); // 初回のみ animate 開始
                     console.log('VRM model switched successfully');
@@ -278,6 +294,18 @@ function animate() {
 
         // --- Gesture animation ---
         updateGesture(delta);
+
+        // P-VRM-001: Smooth expression transitions via lerp
+        // delta * 8 ≈ 0.125s to converge; Math.min(..., 1) prevents overshoot
+        if (vrm.expressionManager) {
+            EMOTION_PRESETS.forEach(preset => {
+                const target = expressionTargets[preset] ?? 0;
+                const current = expressionCurrent[preset] ?? 0;
+                const next = current + (target - current) * Math.min(delta * 8, 1);
+                expressionCurrent[preset] = next;
+                vrm.expressionManager.setValue(preset, next);
+            });
+        }
 
         // --- Update VRM ---
         vrm.update(delta);
@@ -712,14 +740,10 @@ function setExpression(expression) {
 
     currentExpression = expression;
 
-    // Reset emotion expressions (don't touch blink or mouth shapes)
-    vrm.expressionManager.setValue('happy', 0);
-    vrm.expressionManager.setValue('angry', 0);
-    vrm.expressionManager.setValue('sad', 0);
-    vrm.expressionManager.setValue('surprised', 0);
-    vrm.expressionManager.setValue('relaxed', 0);
+    // P-VRM-001: Update emotion targets only — animate() handles lerp transitions
+    // Reset all emotion targets (don't touch blink or mouth shapes)
+    EMOTION_PRESETS.forEach(e => { expressionTargets[e] = 0; });
 
-    // Set new expression
     const presetMap = {
         'happy': 'happy',
         'encouraging': 'happy',
@@ -732,7 +756,8 @@ function setExpression(expression) {
     if (preset) {
         // Reduce weight during speech to prevent mouth override
         const weight = aiSpeaking ? 0.35 : 0.7;
-        vrm.expressionManager.setValue(preset, weight);
+        expressionTargets[preset] = weight;
+        // DO NOT call setValue directly here — animate() handles the lerp
     }
 
     console.log('Expression set:', expression);
