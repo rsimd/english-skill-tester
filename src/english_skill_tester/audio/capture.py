@@ -1,7 +1,6 @@
 """Microphone audio capture using sounddevice."""
 
 import asyncio
-import queue
 from collections.abc import AsyncIterator
 
 import numpy as np
@@ -32,9 +31,8 @@ class AudioCapture:
         self.channels = channels
         self.chunk_size = chunk_size
         self.device = device
-        # Thread-safe queue for audio callback (called from audio thread)
-        self._thread_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=200)
-        # Asyncio queue for async iteration (populated from audio thread via loop.call_soon_threadsafe)
+        # Asyncio queue for async iteration
+        # (populated from audio thread via loop.call_soon_threadsafe)
         self._asyncio_queue: asyncio.Queue[np.ndarray] = asyncio.Queue(maxsize=200)
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stream: sd.InputStream | None = None
@@ -47,16 +45,11 @@ class AudioCapture:
         time_info: object,
         status: sd.CallbackFlags,
     ) -> None:
-        """Sounddevice callback - pushes audio to thread-safe queue."""
+        """Sounddevice callback - pushes audio to asyncio queue."""
         if status:
             logger.warning("audio_capture_status", status=str(status))
         if self._running:
             chunk = indata.copy().flatten()
-            try:
-                self._thread_queue.put_nowait(chunk)
-            except queue.Full:
-                pass  # Drop frame rather than block audio thread
-            # Also push to asyncio queue (thread-safe via call_soon_threadsafe)
             if self._loop is not None:
                 try:
                     self._loop.call_soon_threadsafe(self._asyncio_queue.put_nowait, chunk)
