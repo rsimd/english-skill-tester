@@ -34,9 +34,17 @@ class RealtimeClient:
         model: Realtime model identifier.
     """
 
-    def __init__(self, api_key: str, model: str = "gpt-realtime-1.5"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "gpt-realtime-1.5",
+        vad_threshold: float = 0.3,
+        vad_silence_duration_ms: int = 1000,
+    ):
         self.api_key = api_key
         self.model = model
+        self.vad_threshold = vad_threshold
+        self.vad_silence_duration_ms = vad_silence_duration_ms
         self._ws: ClientConnection | None = None
         self._running = False
         self._event_handlers: dict[str, list[EventHandler]] = {}
@@ -84,7 +92,12 @@ class RealtimeClient:
         logger.info("realtime_connected", model=self.model)
 
         # Configure session
-        config = session_update_event(instructions=instructions, tools=REALTIME_TOOLS)
+        config = session_update_event(
+            instructions=instructions,
+            tools=REALTIME_TOOLS,
+            vad_threshold=self.vad_threshold,
+            vad_silence_duration_ms=self.vad_silence_duration_ms,
+        )
         await self._send(config)
 
     async def disconnect(self) -> None:
@@ -110,7 +123,12 @@ class RealtimeClient:
             instructions: New system instructions.
         """
         self._instructions = instructions  # Update for future reconnections
-        config = session_update_event(instructions=instructions, tools=REALTIME_TOOLS)
+        config = session_update_event(
+            instructions=instructions,
+            tools=REALTIME_TOOLS,
+            vad_threshold=self.vad_threshold,
+            vad_silence_duration_ms=self.vad_silence_duration_ms,
+        )
         await self._send(config)
         logger.info("session_updated")
 
@@ -178,6 +196,8 @@ class RealtimeClient:
                         config = session_update_event(
                             instructions=self._instructions,
                             tools=REALTIME_TOOLS,
+                            vad_threshold=self.vad_threshold,
+                            vad_silence_duration_ms=self.vad_silence_duration_ms,
                         )
                         await self._send(config)
                         logger.info("session_config_resent")

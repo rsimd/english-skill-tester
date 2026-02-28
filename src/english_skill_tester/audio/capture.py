@@ -37,6 +37,7 @@ class AudioCapture:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._stream: sd.InputStream | None = None
         self._running = False
+        self._dropped_frames: int = 0
 
     def _audio_callback(
         self,
@@ -54,7 +55,13 @@ class AudioCapture:
                 try:
                     self._loop.call_soon_threadsafe(self._asyncio_queue.put_nowait, chunk)
                 except asyncio.QueueFull:
-                    pass  # Drop frame rather than block audio thread
+                    self._dropped_frames += 1
+                    if self._dropped_frames % 50 == 1:  # 最初の1回と50回ごと
+                        logger.warning(
+                            "audio_buffer_overflow",
+                            dropped_frames=self._dropped_frames,
+                            queue_size=self._asyncio_queue.qsize(),
+                        )
 
     def start(self) -> None:
         """Start capturing audio from microphone."""
@@ -85,6 +92,9 @@ class AudioCapture:
     def stop(self) -> None:
         """Stop capturing audio."""
         self._running = False
+        if self._dropped_frames > 0:
+            logger.warning("audio_capture_stopped_with_drops", dropped_frames=self._dropped_frames)
+        self._dropped_frames = 0
         if self._stream:
             self._stream.stop()
             self._stream.close()

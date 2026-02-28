@@ -85,6 +85,12 @@ class Settings(BaseSettings):
     audio_input_device: int | None = Field(default=None)
     audio_output_device: int | None = Field(default=None)
 
+    # VAD (Voice Activity Detection) settings
+    vad_threshold: float = Field(default=0.3, description="Server VAD threshold (0.0-1.0)")
+    vad_silence_duration_ms: int = Field(
+        default=1000, description="Silence duration to end turn (ms)"
+    )
+
     # Server
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)

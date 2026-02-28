@@ -13,14 +13,16 @@ def session_update_event(
     output_audio_format: str = "pcm16",
     temperature: float = 0.8,
     turn_detection: dict[str, Any] | None = None,
+    vad_threshold: float = 0.3,
+    vad_silence_duration_ms: int = 1000,
 ) -> dict[str, Any]:
     """Build a session.update event."""
     if turn_detection is None:
         turn_detection = {
             "type": "server_vad",
-            "threshold": 0.3,
+            "threshold": vad_threshold,
             "prefix_padding_ms": 500,
-            "silence_duration_ms": 1000,
+            "silence_duration_ms": vad_silence_duration_ms,
         }
     return {
         "type": "session.update",

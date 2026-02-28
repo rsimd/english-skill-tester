@@ -156,6 +156,8 @@ class SessionManager:
         self.realtime = RealtimeClient(
             api_key=api_key,
             model=settings.realtime_model,
+            vad_threshold=settings.vad_threshold,
+            vad_silence_duration_ms=settings.vad_silence_duration_ms,
         )
         self._tasks: list[asyncio.Task] = []
         self._ai_speaking = False
