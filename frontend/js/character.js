@@ -39,6 +39,9 @@ let activeGesture = null;
 let gestureProgress = 0;
 let gestureOriginalRotations = {}; // Store multiple bone rotations
 
+// Toon rendering gradient map (shared instance)
+let toonGradientMap = null;
+
 // Auto-gesture pools for speaking/listening modes
 const SPEAKING_GESTURES = ['nod', 'wave', 'explain', 'open_palms', 'point', 'thumbs_up'];
 const LISTENING_GESTURES = ['nod', 'nod', 'lean_forward', 'listen'];
@@ -83,11 +86,11 @@ async function initCharacter() {
         controls.dampingFactor = 0.05;
         controls.update();
 
-        // Lighting - brighter for light theme
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        // Lighting - adjusted for toon rendering (lower ambient reveals shadow steps)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         scene.add(ambientLight);
 
-        const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
         mainLight.position.set(1, 2, 2);
         scene.add(mainLight);
 
@@ -153,6 +156,8 @@ async function loadVRM() {
                 if (vrm) {
                     scene.add(vrm.scene);
                     vrm.scene.rotation.y = Math.PI;
+                    applyToonMaterial(vrm);
+                    addOutline(vrm);
                     disableExpressionOverrides();
                     console.log('VRM model loaded successfully');
                     logDiagnostics();
@@ -260,6 +265,8 @@ async function loadModel(source) {
                 if (vrm) {
                     scene.add(vrm.scene);
                     vrm.scene.rotation.y = Math.PI;
+                    applyToonMaterial(vrm);
+                    addOutline(vrm);
                     disableExpressionOverrides(); // Phase 1 の修正を新モデルにも適用
                     // P-VRM-001: Reset expression lerp state for new model
                     EMOTION_PRESETS.forEach(preset => {
@@ -870,6 +877,59 @@ function updateGesture(delta) {
         setIdlePose();
         activeGesture = null;
     }
+}
+
+// ========== TOON RENDERING ==========
+
+function createToonGradient() {
+    // 2-step anime gradient: shadow → mid → bright
+    const colors = new Uint8Array([0, 128, 255, 255]);
+    const gradientMap = new THREE.DataTexture(colors, 4, 1, THREE.RedFormat);
+    gradientMap.minFilter = THREE.NearestFilter;
+    gradientMap.magFilter = THREE.NearestFilter;
+    gradientMap.generateMipmaps = false;
+    gradientMap.needsUpdate = true;
+    return gradientMap;
+}
+
+function applyToonMaterial(vrmModel) {
+    if (!toonGradientMap) {
+        toonGradientMap = createToonGradient();
+    }
+    vrmModel.scene.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((mat, i) => {
+            // Skip MToon materials (VRM1.x) — already toon-shaded natively
+            if (mat.isMToonMaterial || (mat.type && mat.type.toLowerCase().includes('mtoon'))) return;
+            const toon = new THREE.MeshToonMaterial({
+                color: mat.color ?? new THREE.Color(1, 1, 1),
+                map: mat.map ?? null,
+                gradientMap: toonGradientMap,
+            });
+            if (Array.isArray(node.material)) {
+                node.material[i] = toon;
+            } else {
+                node.material = toon;
+            }
+        });
+    });
+}
+
+function addOutline(vrmModel) {
+    vrmModel.scene.traverse((node) => {
+        if (!node.isMesh) return;
+        const outline = new THREE.Mesh(
+            node.geometry,
+            new THREE.MeshBasicMaterial({
+                color: 0x000000,
+                side: THREE.BackSide,
+            })
+        );
+        outline.scale.setScalar(1.03);
+        outline.renderOrder = -1;
+        node.parent?.add(outline);
+    });
 }
 
 // ========== PUBLIC API ==========
