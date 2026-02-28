@@ -1,163 +1,158 @@
 # English Skill Tester
 
-Real-time English conversation skill assessment using OpenAI Realtime API with a 3D character interface.
+OpenAI Realtime APIと3Dキャラクターインターフェースを使ったリアルタイム英会話スキル評価システム。
 
-## System Requirements
+## 動作環境
 
-- **Python**: 3.12 or later
-- **Package Manager**: uv (https://github.com/astral-sh/uv)
-- **OS**: macOS, Linux, or WSL2 on Windows
-- **Node.js**: Not required (frontend uses plain HTML/CSS/JS)
-- **OpenAI API Key**: Required for Realtime API access
+- **Python**: 3.12以降
+- **パッケージマネージャー**: uv (https://github.com/astral-sh/uv)
+- **OS**: macOS、Linux、またはWindows上のWSL2
+- **Node.js**: 不要（フロントエンドはHTML/CSS/JSのみ使用）
+- **OpenAI APIキー**: Realtime APIへのアクセスに必要
 
-## Architecture
+## アーキテクチャ
 
 ```
-[Mic] → sounddevice → Python Backend → OpenAI Realtime API (WebSocket)
-[Speaker] ← sounddevice ← Python Backend ← OpenAI Realtime API
+[マイク] → sounddevice → Pythonバックエンド → OpenAI Realtime API (WebSocket)
+[スピーカー] ← sounddevice ← Pythonバックエンド ← OpenAI Realtime API
 
-Python Backend → FastAPI WebSocket → Browser (3D Character + Score Display + UI)
+Pythonバックエンド → FastAPI WebSocket → ブラウザ（3Dキャラクター + スコア表示 + UI）
 ```
 
-- **Audio I/O**: Python-side microphone/speaker control via sounddevice
-- **Realtime API**: Python → OpenAI WebSocket for audio streaming
-- **Frontend**: FastAPI serves static files, WebSocket for real-time updates
-- **Assessment**: Hybrid rule-based (continuous) + LLM (periodic) scoring
+- **音声I/O**: sounddevice経由でPython側がマイク・スピーカーを制御
+- **Realtime API**: Python → OpenAI WebSocketで音声ストリーミング
+- **フロントエンド**: FastAPIが静的ファイルを配信、WebSocketでリアルタイム更新
+- **評価**: ルールベース（継続的）＋LLM（定期的）のハイブリッドスコアリング
 
-## Setup
+## セットアップ
 
-### 1. Clone the repository
+### 1. リポジトリのクローン
 ```bash
 git clone https://github.com/rsimd/english-skill-tester.git
 cd english-skill-tester
 ```
 
-### 2. Install Python dependencies
+### 2. Python依存パッケージのインストール
 ```bash
 uv sync
 ```
 
-### 3. Download spaCy model
-```bash
-uv run python -m spacy download en_core_web_sm
-```
-
-### 4. Set up environment variables
+### 3. 環境変数の設定
 ```bash
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# .envを編集してOPENAI_API_KEYを追加する
 ```
 
-### 5. (Optional) Add VRM model
-Place your VRM avatar file at `frontend/models/avatar.vrm`
-(A default model is included)
+### 4. （任意）VRMモデルの追加
+VRMアバターファイルを `frontend/models/avatar.vrm` に配置する
+（デフォルトモデルが同梱されています）
 
-### 6. Run the application
+### 5. アプリケーションの起動
 ```bash
 uv run python -m english_skill_tester.main
 ```
 
-Then open `http://localhost:8000` in your browser.
+その後、ブラウザで `http://localhost:8000` を開く。
 
-## Usage
+## 使い方
 
 ```bash
-# Start the server
+# サーバーを起動
 uv run python -m english_skill_tester.main
 
-# Open browser
+# ブラウザで開く
 open http://localhost:8000
 ```
 
-1. Click **Start Conversation** to begin
-2. Speak into your microphone - the AI will respond through your speakers
-3. Watch your scores update in real-time on the right panel
-4. Click **Stop** to end the session and receive detailed feedback
-5. Visit the **Review** page to see past session transcripts
+1. **「会話開始」**をクリックしてセッションを開始
+2. マイクに向かって話しかける ― AIがスピーカーから応答する
+3. 右パネルでスコアがリアルタイムに更新されるのを確認
+4. **「停止」**をクリックしてセッションを終了し、詳細なフィードバックを受け取る
+5. **「レビュー」**ページで過去のセッションのトランスクリプトを確認
 
-## Scoring
+## スコアリング
 
-Hybrid assessment combining rule-based linguistic analysis and periodic LLM evaluation:
+ルールベースの言語分析と定期的なLLM評価を組み合わせたハイブリッド評価:
 
-| Component | Weight | Method |
-|-----------|--------|--------|
-| Vocabulary | 20% | TTR, word frequency, diversity |
-| Grammar | 25% | Error detection, complexity |
-| Fluency | 20% | Filler ratio, WPM, sentence length |
-| Comprehension | 15% | LLM evaluation |
-| Coherence | 15% | LLM evaluation |
-| Pronunciation | 5% | Transcript artifact analysis |
+| 評価項目 | 重み | 評価方法 |
+|----------|------|----------|
+| 語彙力 | 20% | TTR、単語頻度、多様性 |
+| 文法 | 25% | エラー検出、複雑さ |
+| 流暢さ | 20% | フィラー比率、WPM、文の長さ |
+| 理解力 | 15% | LLM評価 |
+| 一貫性 | 15% | LLM評価 |
+| 発音 | 5% | トランスクリプトのアーティファクト分析 |
 
-Scores map to TOEIC (10-990) and IELTS (1-9) estimates.
+スコアはTOEIC（10〜990）およびIELTS（1〜9）の推定値にマッピングされます。
 
-## Adaptive Conversation
+## アダプティブ会話
 
-The AI adjusts its conversation style based on your real-time score:
+AIはリアルタイムのスコアに基づいて会話スタイルを調整します:
 
-- **Beginner** (0-20): Simple yes/no questions, encouragement
-- **Elementary** (20-40): Simple open-ended questions
-- **Intermediate** (40-60): Natural conversation with idioms
-- **Upper Intermediate** (60-80): Abstract discussions, hypotheticals
-- **Advanced** (80-100): Debate, nuanced analysis
+- **初級** (0〜20): 簡単なYes/No質問と励ましの言葉
+- **基礎** (20〜40): 簡単な開放型質問
+- **中級** (40〜60): イディオムを交えた自然な会話
+- **中上級** (60〜80): 抽象的な議論や仮定の話題
+- **上級** (80〜100): ディベート、細かいニュアンスの分析
 
-## Development Commands
+## 開発コマンド
 
-### Run tests
+### テスト実行
 ```bash
 uv run pytest
 ```
 
-### Lint
+### リント
 ```bash
 uv run ruff check .
 ```
 
-### Format
+### フォーマット
 ```bash
 uv run ruff format .
 ```
 
-### Type check
+### 型チェック
 ```bash
 uv run mypy src/
 ```
 
-## Development Status
+## 開発状況
 
-### ✅ Completed (cmd_001)
-- [x] VRM model expression control
-- [x] Lip-sync implementation (initial)
-- [x] Upper body gestures (5 types)
-- [x] Camera adjustment (upper body focus)
-- [x] Audio capture latency optimization
-- [x] Code quality improvements
-- [x] spaCy grammar check integration (highlight only)
-- [x] Async LLM evaluation
-- [x] GitHub repository setup
+### ✅ 完了 (cmd_001)
+- [x] VRMモデルの表情制御
+- [x] リップシンク実装（初期版）
+- [x] 上半身ジェスチャー（5種類）
+- [x] カメラ調整（上半身フォーカス）
+- [x] 音声キャプチャのレイテンシ最適化
+- [x] コード品質の改善
+- [x] LLMによる文法チェック実装（gpt-4o-mini、フォールバック付き）
+- [x] 非同期LLM評価
+- [x] GitHubリポジトリのセットアップ
 
-### 🔄 In Progress (cmd_002)
-- [ ] Fix lip-sync stopping mid-speech (overrideMouth issue)
-- [ ] Add 8 new American gestures (total 13 types)
-- [ ] Rule-based gesture triggering
-- [ ] VRM model dynamic switching via UI
-- [ ] AI tutor persona externalization (YAML)
-- [ ] Unified YAML configuration
+### 🔄 進行中 (cmd_002)
+- [ ] リップシンクが途中で止まる問題の修正（overrideMouth問題）
+- [ ] 新しいアメリカ式ジェスチャー8種追加（合計13種）
+- [ ] ルールベースのジェスチャートリガー
+- [ ] UIからのVRMモデル動的切り替え
+- [ ] AIチューターペルソナの外部化（YAML）
+- [ ] 統合YAMLコンフィグ
 
-### 📋 Planned / Proposed (cmd_003 review)
-- See dashboard.md for 48 improvement proposals (High: 12, Medium: 25, Low: 11)
-- Priority: P-SEC-002 (path traversal fix), P-SEC-001 (API key management)
+### 📋 計画中 / 提案 (cmd_003 レビュー)
+- 48件の改善提案についてはdashboard.mdを参照（高優先度: 12件、中: 25件、低: 11件）
+- 優先事項: P-SEC-002（パストラバーサル修正）、P-SEC-001（APIキー管理）
 
-## Project Structure
+## プロジェクト構成
 
 ```
 src/english_skill_tester/
-├── main.py              # FastAPI entry point
-├── config.py            # Settings (pydantic-settings)
-├── audio/               # Mic capture, speaker playback, recording
-├── realtime/            # OpenAI Realtime API client
-├── assessment/          # Hybrid scoring engine
-├── conversation/        # Adaptive prompts and strategy
-├── analysis/            # Post-session feedback
-├── api/                 # REST + WebSocket routes
-└── models/              # Pydantic data models
+├── main.py              # FastAPIエントリーポイント
+├── config.py            # 設定（pydantic-settings）
+├── audio/               # マイクキャプチャ、スピーカー再生、録音
+├── realtime/            # OpenAI Realtime APIクライアント
+├── assessment/          # ハイブリッドスコアリングエンジン
+├── conversation/        # アダプティブプロンプトと戦略
+├── analysis/            # セッション後フィードバック
+├── api/                 # REST + WebSocketルート
+└── models/              # Pydanticデータモデル
 ```
