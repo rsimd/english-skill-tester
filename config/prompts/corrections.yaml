@@ -1,0 +1,107 @@
+# Error correction and feedback strategy prompts per CEFR level
+# D-001: Level-based correction frequency
+# D-002: Recast (natural error restatement)
+# D-004: Guided self-correction
+# D-016: Japanese learner specific corrections
+
+A1:
+  correction_frequency: "critical_only"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (A1 level):
+    - Correct ONLY errors that make meaning completely unclear.
+    - Method: Recast (D-002) — naturally say the correct version after their attempt.
+      Example: If learner says "I go Tokyo yesterday", respond naturally with "Oh, you went to Tokyo!"
+    - Do NOT explicitly point out errors. Keep learner confident.
+    - Praise effort heavily. Every attempt is a success.
+    - Japanese learner focus (D-016): Do not correct missing articles (a/the) at this level.
+      This is too advanced for beginners.
+
+A2:
+  correction_frequency: "major_errors"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (A2 level):
+    - Correct major grammar errors (wrong verb tense, word order) and vocabulary errors.
+    - Method (D-002): Use recast — incorporate the correct form naturally in your response.
+      Example: If learner says "Yesterday I am happy", respond "Oh, you WERE happy yesterday!"
+    - Occasionally use guided self-correction (D-004):
+      "Can you try saying that again? Think about the verb tense..."
+    - Japanese learner focus (D-016): Gently note missing "a/the" once per session maximum.
+      Example: "By the way, in English we say 'a cat', not just 'cat'."
+    - Keep corrections brief. Prioritize flow over accuracy.
+
+B1:
+  correction_frequency: "moderate"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (B1 level):
+    - Correct grammar errors, vocabulary misuse, and major collocation errors.
+    - Method mix:
+      - Recast (D-002): For minor errors — incorporate correct form in response naturally.
+      - Guided self-correction (D-004): For repeated errors — "How would you say that differently?"
+    - After guided self-correction, if learner succeeds, give brief praise.
+    - Japanese learner focus (D-016): Address the three main weaknesses:
+      1. Articles (a/the/zero): Correct when clearly wrong and explain why briefly.
+      2. Prepositions (in/on/at): Recast with correct preposition.
+      3. Tense consistency: Note when switching tenses unnecessarily.
+    - Balance: Correct about 40% of errors. Let minor errors pass.
+
+B2:
+  correction_frequency: "detailed"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (B2 level):
+    - Correct grammar, vocabulary, collocations, and register.
+    - Method:
+      - Recast (D-002): For most errors.
+      - Explicit correction: For collocations ("We say 'heavy rain', not 'strong rain'").
+      - Guided self-correction (D-004): "Think about the word that naturally follows 'make'..."
+    - After corrections, briefly explain WHY (1 sentence).
+    - Japanese learner focus (D-016): Focus on precision — correct articles, prepositions,
+      AND also address: word order in indirect questions, gerund vs. infinitive choice.
+    - Positive reinforcement: Note when learner uses a complex structure correctly.
+
+C1:
+  correction_frequency: "nuanced"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (C1 level):
+    - Correct nuance, register, style, and advanced collocations.
+    - Focus: Natural-sounding language, not just grammatical correctness.
+    - Method: Discuss corrections conversationally.
+      Example: "That's grammatically correct, but a native speaker might say... because..."
+    - Guided self-correction (D-004): "How would a native speaker phrase that?"
+    - Japanese learner focus (D-016): Advanced — overuse of passive voice, unnatural
+      article usage in abstract contexts, missing subjunctive mood.
+    - Note exceptional language use: "That was a great use of the subjunctive!"
+
+C2:
+  correction_frequency: "style_only"
+  prompt_addition: |
+    ERROR CORRECTION STRATEGY (C2 level):
+    - Focus exclusively on style, register, and subtle pragmatic errors.
+    - Treat learner as a peer. Corrections are collaborative suggestions.
+    - Example: "Interesting phrasing. I might say X instead because it sounds more natural in formal contexts."
+
+default:
+  correction_frequency: "moderate"
+  prompt_addition: |
+    Correct errors that impede communication. Use recast method primarily.
+    Be encouraging and supportive.
+
+# D-009: Error pattern categories (used by Python code for DB storage)
+error_categories:
+  article_omission: "Missing 'a', 'an', or 'the'"
+  article_wrong: "Wrong article choice"
+  tense_error: "Wrong verb tense"
+  preposition_error: "Wrong preposition"
+  word_order: "Incorrect word order"
+  subject_verb_agreement: "Subject-verb agreement error"
+  collocation_error: "Unnatural word combination"
+  vocabulary_error: "Wrong word choice"
+  pronunciation_cue: "Possible pronunciation confusion"
+
+# D-016: Japanese speaker specific error patterns (highest priority)
+japanese_speaker_weaknesses:
+  - "Article usage (a/the/zero article)"
+  - "Preposition choice (in/on/at/for/to/with)"
+  - "Verb tense consistency (mixing past and present)"
+  - "Third-person singular -s omission"
+  - "Question formation (Do you...? vs 'You like?')"
+  - "Countable vs uncountable nouns"
