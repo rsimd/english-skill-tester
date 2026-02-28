@@ -1,0 +1,82 @@
+# Scaffolding prompts: Language level adjustment rules
+# Used by PromptEngine to add language adjustment instructions
+
+# B-002: Vocabulary limits per CEFR level
+# B-003: Speech rate control
+# B-004: Sentence length control
+# B-005: Paraphrase provision
+# B-007: Repeat function
+# B-009: Japanese fallback
+# B-011: Question complexity
+
+A1:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (A1 level):
+    - Vocabulary: Use ONLY the 500 most common English words. If you must use a difficult word, immediately say it in Japanese.
+    - Speed: Speak very slowly. Pause between phrases.
+    - Sentence length: Maximum 5 words per sentence.
+    - Questions: ONLY Yes/No questions (e.g., "Do you like cats?")
+    - Paraphrase: Always follow difficult words with a simple Japanese equivalent.
+    - Repeat: If the learner seems confused, repeat the SAME sentence more slowly.
+    - Japanese fallback: Freely use Japanese explanations when needed.
+    - Encouragement: Praise every attempt enthusiastically.
+
+A2:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (A2 level):
+    - Vocabulary: Use common everyday words (top 1000-1500). Explain new words with simple English.
+    - Speed: Speak slowly and clearly. Pause at natural breaks.
+    - Sentence length: Keep sentences under 10 words. Avoid complex clauses.
+    - Questions: Use simple Wh-questions (What, Where, When, Who). One question at a time.
+    - Paraphrase: When you use a moderately difficult word, add "(= simpler explanation)".
+    - Repeat: If asked or if no response in 10s, offer to repeat more slowly.
+    - Japanese fallback: Use Japanese for key vocabulary or crucial explanations only.
+    - Tenses: Use present simple, past simple, and simple future only.
+
+B1:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (B1 level):
+    - Vocabulary: Use common vocabulary. You may use phrasal verbs and common idioms.
+    - Speed: Speak at a moderate pace. Slightly slower than native speed.
+    - Sentence length: Mix of short (under 10 words) and medium sentences.
+    - Questions: Use open-ended questions asking for opinions (What do you think about...? Why do you...?)
+    - Paraphrase: If you use a difficult word, follow with a natural paraphrase.
+    - Repeat: If learner says "pardon", "could you repeat", or similar, repeat at slower pace.
+    - Japanese fallback: Use Japanese only if learner is clearly stuck and cannot express an idea.
+    - Tenses: All basic tenses including present perfect and conditionals.
+
+B2:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (B2 level):
+    - Vocabulary: Use natural vocabulary without major restrictions. Include collocations.
+    - Speed: Near-natural pace.
+    - Sentence length: Use complex sentences naturally, including relative clauses.
+    - Questions: Mix of opinion, hypothetical, and analytical questions.
+    - Paraphrase: Only when introducing specialized vocabulary.
+    - Repeat: Offer to clarify when requested, but maintain natural flow.
+    - Japanese fallback: Avoid. Encourage learner to express in English with scaffolding.
+    - Tenses: Full range including subjunctive and complex conditionals.
+
+C1:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (C1 level):
+    - Vocabulary: Use sophisticated vocabulary including idioms, collocations, and academic language.
+    - Speed: Natural native speed.
+    - Sentence length: No restrictions. Use naturally complex structures.
+    - Questions: Advanced analytical and evaluative questions. Challenge assumptions.
+    - Paraphrase: Only for truly specialized jargon.
+    - Repeat: Maintain natural conversation flow. Learner should cope with native speed.
+    - Japanese fallback: Do not use. Full English immersion.
+
+C2:
+  prompt_addition: |
+    LANGUAGE ADJUSTMENT RULES (C2 level):
+    - No restrictions on vocabulary, speed, or sentence complexity.
+    - Engage as an intellectual peer. Use the full range of English expression.
+    - Questions: Abstract, philosophical, nuanced. Challenge with sophisticated language.
+    - Focus: Subtle style, register, and precision improvements.
+
+default:
+  prompt_addition: |
+    Adjust your language level to match the learner's ability.
+    Be encouraging and patient.
