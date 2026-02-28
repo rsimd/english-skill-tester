@@ -24,6 +24,7 @@ from english_skill_tester.conversation.strategy import ConversationStrategy
 from english_skill_tester.models.assessment import score_to_ielts, score_to_toeic
 from english_skill_tester.models.session import Session, SessionStatus
 from english_skill_tester.realtime.client import RealtimeClient
+from english_skill_tester.storage.score_history import append_session_score
 
 logger = structlog.get_logger()
 
@@ -400,6 +401,19 @@ class SessionManager:
         data = self.session.model_dump_json(indent=2)
         path.write_text(data)
         logger.info("session_saved", path=str(path))
+
+        assessment = self.scorer.latest_result
+        append_session_score(
+            sessions_dir=self.settings.sessions_dir,
+            session_id=self.session.session_id,
+            started_at=self.session.started_at,
+            ended_at=self.session.ended_at,
+            overall_score=assessment.overall_score,
+            components=assessment.components.model_dump(),
+            toeic_estimate=score_to_toeic(assessment.overall_score),
+            ielts_estimate=score_to_ielts(assessment.overall_score),
+        )
+        logger.info("score_history_saved", session_id=self.session.session_id)
 
     async def _send_to_browser(self, data: dict) -> None:
         """Send a message to the browser WebSocket."""

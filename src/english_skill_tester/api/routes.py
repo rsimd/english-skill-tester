@@ -7,6 +7,7 @@ import structlog
 from fastapi import APIRouter, HTTPException
 
 from english_skill_tester.config import get_settings
+from english_skill_tester.storage.score_history import read_score_history
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/api")
@@ -51,6 +52,13 @@ async def get_session(session_id: str) -> dict:
     if not path.exists():
         raise HTTPException(status_code=404, detail="Session not found")
     return json.loads(path.read_text())
+
+
+@router.get("/sessions/history")
+async def get_score_history() -> dict:
+    """Return historical session scores."""
+    settings = get_settings()
+    return read_score_history(settings.sessions_dir)
 
 
 @router.get("/health")
