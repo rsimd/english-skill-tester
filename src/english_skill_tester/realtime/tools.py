@@ -67,4 +67,23 @@ REALTIME_TOOLS: list[dict] = [
             "required": ["farewell_reason"],
         },
     },
+    {
+        "type": "function",
+        "name": "web_search",
+        "description": (
+            "Search the web for current information when the user asks about recent events, "
+            "facts, or topics you're unsure about. Use sparingly — only when genuinely needed. "
+            "Do NOT search for basic vocabulary or grammar topics."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query in English.",
+                },
+            },
+            "required": ["query"],
+        },
+    },
 ]

@@ -48,7 +48,7 @@ class TestEventBuilders:
 
 class TestRealtimeTools:
     def test_tools_defined(self):
-        assert len(REALTIME_TOOLS) == 3
+        assert len(REALTIME_TOOLS) == 4
 
     def test_set_expression_tool(self):
         tool = REALTIME_TOOLS[0]
@@ -70,3 +70,10 @@ class TestRealtimeTools:
         params = tool["parameters"]["properties"]["farewell_reason"]
         assert "user_request" in params["enum"]
         assert "time_limit" in params["enum"]
+
+    def test_web_search_tool(self):
+        tool = REALTIME_TOOLS[3]
+        assert tool["name"] == "web_search"
+        params = tool["parameters"]["properties"]["query"]
+        assert params["type"] == "string"
+        assert "query" in tool["parameters"]["required"]

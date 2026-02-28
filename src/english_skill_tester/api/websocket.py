@@ -10,6 +10,7 @@ from datetime import datetime
 
 import numpy as np
 import structlog
+from duckduckgo_search import DDGS
 from fastapi import WebSocket, WebSocketDisconnect
 
 from english_skill_tester.analysis.feedback import FeedbackGenerator
@@ -28,6 +29,23 @@ from english_skill_tester.realtime.client import RealtimeClient
 from english_skill_tester.storage.score_history import append_session_score
 
 logger = structlog.get_logger()
+
+
+def _execute_web_search(query: str, max_results: int = 3) -> str:
+    """Execute a web search and return formatted results."""
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+        if not results:
+            return "No results found."
+        lines = []
+        for r in results:
+            lines.append(f"- {r.get('title', '')}: {r.get('body', '')}")
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning("web_search_failed", error=str(e))
+        return f"Search failed: {e}"
+
 
 _EMOTION_PATTERNS = {
     "happy": [
@@ -313,6 +331,9 @@ class SessionManager:
                 })
                 # Schedule session stop (allow AI's farewell audio to finish first)
                 asyncio.create_task(self._delayed_stop(delay=2.0))
+            elif name == "web_search":
+                # Result is handled by client.py's register_function mechanism
+                logger.info("web_search_triggered", query=args.get("query", ""))
 
         self.realtime.on("response.audio.delta", on_audio_delta)
         self.realtime.on("response.created", on_response_started)
@@ -349,6 +370,7 @@ class SessionManager:
                 {"status": "ok", "farewell_reason": farewell_reason}
             ),
         )
+        self.realtime.register_function("web_search", _execute_web_search)
 
     async def _audio_send_loop(self) -> None:
         """Send microphone audio to Realtime API."""
