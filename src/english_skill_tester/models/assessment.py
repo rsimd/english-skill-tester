@@ -63,10 +63,52 @@ SCORE_MAPPINGS: list[ScoreMapping] = [
 
 
 def score_to_toeic(score: float) -> int:
-    """Convert 0-100 score to estimated TOEIC score."""
-    return int(10 + (score / 100) * 980)
+    """Convert 0-100 assessment score to approximate TOEIC score (10-990).
+
+    Uses piecewise linear mapping to better approximate real TOEIC distribution.
+    Calibrated against typical TOEIC score distributions.
+    """
+    score = max(0.0, min(100.0, score))
+    # Piecewise linear segments: (score_threshold, toeic_value)
+    segments = [
+        (0, 10),
+        (20, 150),   # Low performers: 0-20% → 10-150
+        (40, 350),   # Below average: 20-40% → 150-350
+        (55, 500),   # Average: 40-55% → 350-500
+        (70, 650),   # Above average: 55-70% → 500-650
+        (85, 800),   # Good: 70-85% → 650-800
+        (95, 900),   # Very good: 85-95% → 800-900
+        (100, 990),  # Excellent: 95-100% → 900-990
+    ]
+    for i in range(len(segments) - 1):
+        s0, t0 = segments[i]
+        s1, t1 = segments[i + 1]
+        if s0 <= score <= s1:
+            ratio = (score - s0) / (s1 - s0)
+            return round(t0 + ratio * (t1 - t0))
+    return 990
 
 
 def score_to_ielts(score: float) -> float:
-    """Convert 0-100 score to estimated IELTS band."""
-    return round(1.0 + (score / 100) * 8.0, 1)
+    """Convert 0-100 assessment score to approximate IELTS score (1.0-9.0).
+
+    Uses piecewise linear mapping to better approximate IELTS band distribution.
+    """
+    score = max(0.0, min(100.0, score))
+    segments = [
+        (0, 1.0),
+        (20, 2.5),   # Low: 0-20% → 1.0-2.5
+        (40, 4.0),   # Below average: 20-40% → 2.5-4.0
+        (55, 5.5),   # Average: 40-55% → 4.0-5.5 (most learners here)
+        (70, 6.5),   # Above average: 55-70% → 5.5-6.5
+        (85, 7.5),   # Good: 70-85% → 6.5-7.5
+        (95, 8.5),   # Very good: 85-95% → 7.5-8.5
+        (100, 9.0),  # Expert: 95-100% → 8.5-9.0
+    ]
+    for i in range(len(segments) - 1):
+        s0, t0 = segments[i]
+        s1, t1 = segments[i + 1]
+        if s0 <= score <= s1:
+            ratio = (score - s0) / (s1 - s0)
+            return round(t0 + ratio * (t1 - t0), 1)
+    return 9.0
