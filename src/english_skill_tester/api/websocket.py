@@ -519,9 +519,9 @@ class SessionManager:
         emotion = self._detect_emotion(text)
         if emotion != "neutral":
             await self._send_to_browser({
-                "type": "set_expression",
-                "expression": emotion,
-                "intensity": 0.8,
+                "type": "character_action",
+                "action_type": "expression",
+                "value": emotion,
             })
             asyncio.create_task(self._reset_expression_after(delay=3.0))
 
@@ -529,9 +529,9 @@ class SessionManager:
         """Reset expression to neutral after delay."""
         await asyncio.sleep(delay)
         await self._send_to_browser({
-            "type": "set_expression",
-            "expression": "neutral",
-            "intensity": 0.0,
+            "type": "character_action",
+            "action_type": "expression",
+            "value": "neutral",
         })
 
     async def _delayed_stop(self, delay: float = 2.0) -> None:
@@ -557,6 +557,9 @@ async def handle_browser_websocket(
     try:
         while True:
             data = await websocket.receive_json()
+            if not isinstance(data, dict):
+                await websocket.send_json({"type": "error", "message": "Invalid message format"})
+                continue
             msg_type = data.get("type", "")
 
             if msg_type == "start_session":
